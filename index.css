@@ -1,0 +1,21 @@
+* {
+    font-family: Helvetica, Arial, sans-serif;
+  }
+  
+  
+  h1 {
+    color:whitesmoke;
+    background-color: black;
+    margin: 0 auto;
+  }
+  
+  
+  p, 
+  li {
+    font-size: 18px;
+  }
+  
+  
+  a {
+    text-decoration: none;
+  }
