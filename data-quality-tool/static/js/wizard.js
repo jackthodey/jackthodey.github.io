@@ -229,11 +229,21 @@ async function handleFile(file) {
 
   showSpinner(true);
   try {
-    const res  = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    showSpinner(false);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
 
-    if (data.error) { alert('Upload error: ' + data.error); return; }
+    // Guard: server may return HTML on crash — extract text first
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      showSpinner(false);
+      alert('Server error (status ' + res.status + '). Check Render logs for details.');
+      return;
+    }
+
+    showSpinner(false);
+    if (data.error) { alert('Upload error: ' + data.error + (data.detail ? '\n\n' + data.detail : '')); return; }
 
     state.sessionId = data.session_id;
 

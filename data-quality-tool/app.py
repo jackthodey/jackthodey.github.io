@@ -78,46 +78,49 @@ def upload_csv():
     Accept a CSV file, store it server-side, and return a preview + column list.
     Returns a session_id that must be echoed back in /api/assess.
     """
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-
-    f = request.files["file"]
-    if not f.filename or not f.filename.lower().endswith(".csv"):
-        return jsonify({"error": "Please upload a .csv file"}), 400
-
     try:
-        df = pd.read_csv(f)
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        f = request.files["file"]
+        if not f.filename or not f.filename.lower().endswith(".csv"):
+            return jsonify({"error": "Please upload a .csv file"}), 400
+
+        try:
+            df = pd.read_csv(f)
+        except Exception as e:
+            return jsonify({"error": f"Could not parse CSV: {e}"}), 400
+
+        if len(df) == 0:
+            return jsonify({"error": "The uploaded CSV is empty"}), 400
+
+        sid = str(uuid.uuid4())
+        _csv_store[sid] = df
+
+        col_hints = {}
+        for col in df.columns:
+            s = df[col].dropna()
+            if len(s) == 0:
+                col_hints[col] = "empty"
+            elif pd.to_numeric(s.head(20), errors="coerce").notna().mean() > 0.8:
+                col_hints[col] = "numeric"
+            else:
+                try:
+                    parsed = pd.to_datetime(s.head(20).astype(str), errors="coerce")
+                    col_hints[col] = "date" if parsed.notna().mean() > 0.7 else "text"
+                except Exception:
+                    col_hints[col] = "text"
+
+        return jsonify({
+            "session_id":  sid,
+            "columns":     list(df.columns),
+            "col_hints":   col_hints,
+            "row_count":   len(df),
+            "col_count":   len(df.columns),
+            "preview":     df.head(5).fillna("").to_dict(orient="records"),
+        })
     except Exception as e:
-        return jsonify({"error": f"Could not parse CSV: {e}"}), 400
-
-    if len(df) == 0:
-        return jsonify({"error": "The uploaded CSV is empty"}), 400
-
-    sid = str(uuid.uuid4())
-    _csv_store[sid] = df
-
-    # Build column type hints for the mapping UI
-    col_hints = {}
-    for col in df.columns:
-        s = df[col].dropna()
-        if len(s) == 0:
-            col_hints[col] = "empty"
-        elif pd.to_numeric(s.head(20), errors="coerce").notna().mean() > 0.8:
-            col_hints[col] = "numeric"
-        elif pd.to_datetime(s.head(20).astype(str), errors="coerce",
-                            infer_datetime_format=True).notna().mean() > 0.7:
-            col_hints[col] = "date"
-        else:
-            col_hints[col] = "text"
-
-    return jsonify({
-        "session_id":  sid,
-        "columns":     list(df.columns),
-        "col_hints":   col_hints,
-        "row_count":   len(df),
-        "col_count":   len(df.columns),
-        "preview":     df.head(5).fillna("").to_dict(orient="records"),
-    })
+        return jsonify({"error": f"Upload failed: {str(e)}", "detail": traceback.format_exc()}), 500
 
 
 # =============================================================================
