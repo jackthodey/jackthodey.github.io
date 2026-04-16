@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Quality Assessment Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #F8F9FC;
+      --card:     #FFFFFF;
+      --accent:   #4361EE;
+      --accent-l: #EEF1FD;
+      --text:     #1A1A2E;
+      --muted:    #6B7280;
+      --border:   #E5E7EB;
+      --gold:     #C9A84C;
+      --silver:   #8A8A8A;
+      --bronze:   #A0522D;
+      --green:    #16A34A;
+      --amber:    #D97706;
+      --red:      #DC2626;
+      --radius:   12px;
+      --shadow:   0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+
+    /* ── Layout ── */
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; font-size: 15px; letter-spacing: -.2px; color: var(--text); }
+    .topbar-brand span { color: var(--accent); }
+    .main { flex: 1; padding: 40px 24px; }
+    .container { max-width: 760px; margin: 0 auto; }
+
+    /* ── Step indicator ── */
+    .step-indicator { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 40px; }
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); background: var(--card); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--muted); transition: all .25s; flex-shrink: 0; }
+    .step-dot.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .step-dot.done { border-color: var(--accent); background: var(--accent-l); color: var(--accent); }
+    .step-line { height: 2px; width: 60px; background: var(--border); transition: background .25s; }
+    .step-line.done { background: var(--accent); }
+
+    /* ── Card ── */
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; margin-bottom: 20px; }
+    .card-sm { padding: 20px 24px; }
+
+    /* ── Typography ── */
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -.5px; line-height: 1.25; margin-bottom: 8px; }
+    h2 { font-size: 20px; font-weight: 600; letter-spacing: -.3px; margin-bottom: 4px; }
+    h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .subtitle { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+    .label { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; display: block; }
+    .ref { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-style: italic; }
+
+    /* ── Inputs ── */
+    input[type=text] { width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 15px; color: var(--text); outline: none; transition: border-color .2s; background: var(--bg); }
+    input[type=text]:focus { border-color: var(--accent); background: #fff; }
+    select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; color: var(--text); background: var(--bg); outline: none; cursor: pointer; }
+    select:focus { border-color: var(--accent); }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .18s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3451d1; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .btn-outline:hover { background: var(--accent-l); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 12px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
+    .btn-row .spacer { flex: 1; }
+    .link-btn { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit; }
+    .link-btn:hover { color: var(--accent); }
+
+    /* ── Steps visibility ── */
+    .step { display: none; }
+    .step.active { display: block; }
+
+    /* ── Questionnaire ── */
+    .progress-bar-wrap { background: var(--border); border-radius: 99px; height: 6px; margin-bottom: 24px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s ease; }
+    .progress-label { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; margin-bottom: 20px; }
+    .dim-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .dim-badge { background: var(--accent-l); color: var(--accent); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .question-block { margin-bottom: 28px; }
+    .q-number { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+    .q-text { font-size: 15px; font-weight: 500; margin-bottom: 12px; line-height: 1.5; }
+    .radio-cards { display: grid; gap: 8px; }
+    .radio-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .15s; background: var(--bg); }
+    .radio-card:hover { border-color: var(--accent); background: var(--accent-l); }
+    .radio-card.selected { border-color: var(--accent); background: var(--accent-l); }
+    .radio-card .mat-val { min-width: 24px; height: 24px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; margin-top: 1px; transition: all .15s; }
+    .radio-card.selected .mat-val { background: var(--accent); color: #fff; }
+    .radio-card .mat-label { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+    /* ── Upload zone ── */
+    .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 48px 24px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg); }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-l); }
+    .upload-zone .upload-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-zone p { color: var(--muted); font-size: 14px; }
+    .upload-zone strong { color: var(--accent); }
+    #file-input { display: none; }
+    .upload-success { background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 8px; padding: 12px 16px; margin-top: 16px; font-size: 13px; color: var(--green); font-weight: 500; display: none; }
+
+    /* ── Preview table ── */
+    .preview-wrap { overflow-x: auto; margin-top: 20px; border-radius: 8px; border: 1px solid var(--border); }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-table th { background: var(--text); color: #fff; padding: 8px 12px; text-align: left; font-weight: 500; white-space: nowrap; }
+    .data-table td { padding: 7px 12px; border-top: 1px solid var(--border); white-space: nowrap; color: var(--muted); }
+    .data-table tr:hover td { background: var(--bg); }
+
+    /* ── Column mapping ── */
+    .mapping-grid { display: grid; gap: 10px; margin-top: 16px; }
+    .mapping-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; align-items: center; padding: 10px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+    .col-name { font-size: 13px; font-weight: 500; }
+    .col-hint { font-size: 11px; color: var(--muted); }
+
+    /* ── Spinner ── */
+    .spinner-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.8); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+    .spinner-overlay.active { display: flex; }
+    .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    .spinner-label { font-size: 14px; color: var(--muted); font-weight: 500; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    .tier-banner { border-radius: var(--radius); padding: 28px 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 20px; }
+    .tier-icon { font-size: 52px; line-height: 1; }
+    .tier-label { font-size: 32px; font-weight: 700; letter-spacing: -.5px; }
+    .tier-desc { font-size: 14px; opacity: .85; margin-top: 4px; max-width: 480px; line-height: 1.6; }
+
+    .score-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .score-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; }
+    .score-card-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .score-card-value { font-size: 36px; font-weight: 700; color: var(--accent); letter-spacing: -1px; line-height: 1; }
+    .score-card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Gauge */
+    .gauge-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
+    .gauge { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
+    .gauge-inner { width: 100px; height: 100px; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .gauge-score { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+    .gauge-max { font-size: 12px; color: var(--muted); }
+
+    /* Dim bars */
+    .dim-bars { display: grid; gap: 12px; }
+    .dim-bar-row { display: grid; grid-template-columns: 180px 1fr 44px; gap: 12px; align-items: center; }
+    .dim-bar-name { font-size: 13px; font-weight: 500; }
+    .dim-bar-track { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
+    .dim-bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+    .bar-green  { background: var(--green); }
+    .bar-amber  { background: var(--amber); }
+    .bar-red    { background: var(--red); }
+    .dim-bar-val { font-size: 13px; font-weight: 600; text-align: right; }
+
+    /* Rec cards */
+    .rec-list { display: grid; gap: 12px; }
+    .rec-card { background: var(--card); border-radius: 8px; border: 1px solid var(--border); padding: 16px 20px; box-shadow: var(--shadow); }
+    .rec-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .rec-area { font-size: 14px; font-weight: 600; flex: 1; }
+    .priority-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .4px; }
+    .priority-high   { background: #FEE2E2; color: var(--red); }
+    .priority-medium { background: #FEF3C7; color: var(--amber); }
+    .rec-score { font-size: 12px; color: var(--muted); }
+    .rec-action { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* Section heading */
+    .section-heading { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 14px; margin-top: 4px; }
+
+    /* Utility */
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .mb-4 { margin-bottom: 4px; }
+    .text-muted { color: var(--muted); }
+    .text-sm { font-size: 13px; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-8 { gap: 8px; }
+    .hidden { display: none !important; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+    .tag-blue { background: var(--accent-l); color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .score-cards { grid-template-columns: 1fr; }
+      .dim-bar-row { grid-template-columns: 120px 1fr 40px; }
+      .mapping-row { grid-template-columns: 1fr; }
+      h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-brand">DQ<span>Assess</span></div>
+      <div class="text-sm text-muted">DAMA-DMBOK2 · ISO 8000</div>
+    </header>
+
+    <!-- Spinner overlay -->
+    <div class="spinner-overlay" id="spinner">
+      <div class="spinner"></div>
+      <div class="spinner-label">Running assessment…</div>
+    </div>
+
+    <main class="main">
+      <div class="container">
+
+        <!-- Step indicator -->
+        <div class="step-indicator" id="step-indicator">
+          <div class="step-dot active" id="dot-1">1</div>
+          <div class="step-line" id="line-1"></div>
+          <div class="step-dot" id="dot-2">2</div>
+          <div class="step-line" id="line-2"></div>
+          <div class="step-dot" id="dot-3">3</div>
+          <div class="step-line" id="line-3"></div>
+          <div class="step-dot" id="dot-4">4</div>
+        </div>
+
+        <!-- ── STEP 1: Setup ─────────────────────────────────── -->
+        <section class="step active" id="step-setup">
+          <div class="card">
+            <h1>Data Quality Assessment</h1>
+            <p class="subtitle">
+              Evaluate your data table against DAMA-DMBOK2 governance standards and
+              technical quality benchmarks to receive a Gold, Silver, or Bronze maturity rating.
+            </p>
+            <label class="label" for="table-name-input">Table / Dataset Name</label>
+            <input type="text" id="table-name-input" placeholder="e.g. customer_master, orders_2024" autocomplete="off" />
+            <div class="btn-row">
+              <button class="btn btn-primary" id="btn-begin">Begin Assessment →</button>
+            </div>
+          </div>
+          <div class="card card-sm" style="border-left: 3px solid var(--accent);">
+            <h3 style="margin-bottom:6px;">What this tool assesses</h3>
+            <p class="text-sm text-muted">
+              <strong style="color:var(--text)">Governance questionnaire</strong> — 20 questions across 5 DAMA dimensions:
+              ownership, quality management, lineage, security, and training &amp; compliance.
+              Each question uses a 1–4 maturity scale.<br/><br/>
+              <strong style="color:var(--text)">Data profiling</strong> — Upload a CSV to assess completeness, uniqueness,
+              validity against data standards, consistency, and timeliness.<br/><br/>
+              <strong style="color:var(--text)">Combined score</strong> — 60% governance · 40% profiling → Gold / Silver / Bronze tier.
+            </p>
+          </div>
+        </section>
+
+        <!-- ── STEP 2: Questionnaire ─────────────────────────── -->
+        <section class="step" id="step-questionnaire">
+          <div class="card">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+            <div class="progress-label" id="progress-label">0 of 20 answered</div>
+            <div class="dim-header">
+              <div class="dim-badge" id="dim-badge">Dimension 1 of 5</div>
+              <h2 id="dim-title">Governance &amp; Ownership</h2>
+            </div>
+            <div id="questions-container"></div>
+            <div class="btn-row">
+              <button class="btn btn-ghost" id="btn-prev" style="display:none">← Previous</button>
+              <div class="spacer"></div>
+              <button class="link-btn" id="btn-skip-profiling">Skip data profiling →</button>
+              <button class="btn btn-primary" id="btn-next">Next →</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── STEP 3: Upload ────────────────────────────────── -->
+        <section class="step" id="step-upload">
+          <div class="card">
+            <h2>Upload Data for Profiling</h2>
+            <p class="subtitle" style="margin-bottom:20px;">
+              Upload a CSV sample of your table. The tool will profile it for completeness,
+              uniqueness, validity, consistency, and timeliness.
+            </p>
+
+            <div class="upload-zone" id="upload-zone">
+              <div class="upload-icon">📂</div>
+              <p><strong>Click to browse</strong> or drag &amp; drop a CSV file here</p>
+              <p class="mt-8" style="font-size:12px;">Accepts .csv · Max 32 MB</p>
+            </div>
+            <input type="file" id="file-input" accept=".csv" />
+            <div class="upload-success" id="upload-success">✓ File uploaded successfully</div>
+
+            <div id="preview-section" class="hidden">
+              <div class="flex items-center gap-8 mt-24 mb-4">
+                <span class="section-heading" style="margin:0">Data Preview</span>
+                <span class="tag tag-blue" id="preview-meta"></span>
+              </div>
+              <div class="preview-wrap">
+                <table class="data-table" id="preview-table"></table>
+              </div>
+
+              <div class="mt-24">
+                <div class="section-heading">Column → Standard Mapping</div>
+                <p class="text-sm text-muted mb-4">
+                  Map each column to a reference data standard to enable validity checking.
+                  Leave unmapped columns as "No standard".
+                </p>
+                <div class="mapping-grid" id="mapping-grid"></div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-ghost" id="btn-back-to-q">← Back</button>
+              <div class="spacer"></div>
+              <button class="btn btn-primary" id="btn-run" disabled>Run Assessment →</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── STEP 4: Results ───────────────────────────────── -->
+        <section class="step" id="step-results">
+
+          <!-- Tier banner -->
+          <div class="tier-banner" id="tier-banner">
+            <div class="tier-icon" id="tier-icon"></div>
+            <div>
+              <div class="tier-label" id="tier-label"></div>
+              <div class="tier-desc" id="tier-desc"></div>
+            </div>
+          </div>
+
+          <!-- Score gauge + cards -->
+          <div class="gauge-wrap">
+            <div class="gauge" id="score-gauge">
+              <div class="gauge-inner">
+                <div class="gauge-score" id="gauge-score">0</div>
+                <div class="gauge-max">/100</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="score-cards" id="score-cards"></div>
+
+          <!-- Governance dims -->
+          <div class="card mt-16">
+            <div class="section-heading">Governance Dimensions</div>
+            <div class="dim-bars" id="gov-bars"></div>
+          </div>
+
+          <!-- Profiling dims -->
+          <div class="card mt-16 hidden" id="prof-section">
+            <div class="section-heading">Data Profiling Dimensions</div>
+            <div class="dim-bars" id="prof-bars"></div>
+            <div class="mt-24" id="col-stats-section">
+              <div class="section-heading">Column Statistics</div>
+              <div class="preview-wrap">
+                <table class="data-table" id="col-stats-table"></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recommendations -->
+          <div class="card mt-16" id="recs-section">
+            <div class="section-heading">Priority Improvement Actions</div>
+            <div class="rec-list" id="rec-list"></div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="btn-row mt-24">
+            <button class="btn btn-outline" id="btn-pdf">⬇ Download PDF Report</button>
+            <div class="spacer"></div>
+            <button class="btn btn-ghost" id="btn-restart">Start New Assessment</button>
+          </div>
+
+        </section>
+
+      </div><!-- /container -->
+    </main>
+  </div><!-- /shell -->
+
+  <script src="/static/js/wizard.js" defer></script>
+  <script src="/static/js/results.js" defer></script>
+</body>
+</html>
