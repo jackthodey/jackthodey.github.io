@@ -104,8 +104,7 @@ def upload_csv():
             col_hints[col] = "empty"
         elif pd.to_numeric(s.head(20), errors="coerce").notna().mean() > 0.8:
             col_hints[col] = "numeric"
-        elif pd.to_datetime(s.head(20).astype(str), errors="coerce",
-                            infer_datetime_format=True).notna().mean() > 0.7:
+        elif pd.to_datetime(s.head(20).astype(str), errors="coerce").notna().mean() > 0.7:
             col_hints[col] = "date"
         else:
             col_hints[col] = "text"
