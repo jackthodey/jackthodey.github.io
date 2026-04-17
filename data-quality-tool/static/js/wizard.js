@@ -9,7 +9,7 @@ const state = {
   standards:        {},
   currentDimension: 0,
   answers:          {},
-  sessionId:        null,
+  csvContent:       null,   // raw CSV text stored in browser
   columnStandards:  {},
   assessResult:     null,
 };
@@ -32,8 +32,8 @@ async function loadQuestions() {
   try {
     const res  = await fetch('/api/questions');
     const data = await res.json();
-    state.questions        = data.questions || [];
-    state.dimensionLabels  = data.dimension_labels || {};
+    state.questions       = data.questions || [];
+    state.dimensionLabels = data.dimension_labels || {};
   } catch (e) { console.error('Failed to load questions', e); }
 }
 
@@ -135,7 +135,9 @@ function renderQuestionnaire() {
   const newPrev = btnPrev.cloneNode(true);
   btnPrev.parentNode.replaceChild(newPrev, btnPrev);
   newPrev.style.display = state.currentDimension === 0 ? 'none' : '';
-  newPrev.addEventListener('click', () => { if (state.currentDimension > 0) { state.currentDimension--; renderQuestionnaire(); } });
+  newPrev.addEventListener('click', () => {
+    if (state.currentDimension > 0) { state.currentDimension--; renderQuestionnaire(); }
+  });
 
   const btnNext = document.getElementById('btn-next');
   const newNext = btnNext.cloneNode(true);
@@ -149,7 +151,7 @@ function renderQuestionnaire() {
   const btnSkip = document.getElementById('btn-skip-profiling');
   const newSkip = btnSkip.cloneNode(true);
   btnSkip.parentNode.replaceChild(newSkip, btnSkip);
-  newSkip.addEventListener('click', () => runAssessment(null));
+  newSkip.addEventListener('click', () => runAssessment());
 
   updateProgress();
 }
@@ -183,15 +185,20 @@ function initUpload() {
     if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
-  document.getElementById('btn-run').addEventListener('click', () => runAssessment(state.sessionId));
+  document.getElementById('btn-run').addEventListener('click', () => runAssessment());
 }
 
 async function handleFile(file) {
   if (!file.name.toLowerCase().endsWith('.csv')) { alert('Please upload a .csv file.'); return; }
 
+  showSpinner(true);
+
+  // Read the file as text in the browser — no server round-trip for storage
+  const csvText = await readFileAsText(file);
+
+  // Send to server just for preview & column hints
   const formData = new FormData();
   formData.append('file', file);
-  showSpinner(true);
 
   try {
     const res  = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -205,7 +212,8 @@ async function handleFile(file) {
     showSpinner(false);
     if (data.error) { alert('Upload error: ' + data.error); return; }
 
-    state.sessionId = data.session_id;
+    // Store raw CSV text in state — sent directly with assessment request
+    state.csvContent = csvText;
 
     const successEl = document.getElementById('upload-success');
     successEl.textContent = `✓ ${file.name} uploaded — ${data.row_count.toLocaleString()} rows · ${data.col_count} columns`;
@@ -221,15 +229,25 @@ async function handleFile(file) {
   }
 }
 
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
 function renderPreview(data) {
   document.getElementById('preview-meta').textContent =
     `${data.row_count.toLocaleString()} rows · ${data.col_count} columns`;
-
   const cols = data.columns;
   const rows = data.preview || [];
   document.getElementById('preview-table').innerHTML = `
     <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(row => `<tr>${cols.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    <tbody>${rows.map(row =>
+      `<tr>${cols.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>`
+    ).join('')}</tbody>`;
 }
 
 function renderColumnMapping(columns, colHints) {
@@ -243,7 +261,7 @@ function renderColumnMapping(columns, colHints) {
   ).join('');
 
   columns.forEach(col => {
-    const hint = colHints[col] || 'text';
+    const hint        = colHints[col] || 'text';
     const autoSuggest = hint === 'date' ? 'date_iso' : '';
     const row = document.createElement('div');
     row.className = 'mapping-row';
@@ -272,13 +290,13 @@ function renderColumnMapping(columns, colHints) {
 
 // ── Assessment ────────────────────────────────────────────────────────────────
 
-async function runAssessment(sessionId) {
+async function runAssessment() {
   showSpinner(true);
   try {
     const payload = {
       table_name:         state.tableName,
       governance_answers: state.answers,
-      session_id:         sessionId,
+      csv_content:        state.csvContent,   // raw CSV text, parsed server-side
       column_standards:   state.columnStandards,
     };
 
@@ -288,7 +306,6 @@ async function runAssessment(sessionId) {
       body:    JSON.stringify(payload),
     });
 
-    // Guard against HTML error pages
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); } catch (_) {
