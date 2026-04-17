@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import io
 import os
-import uuid
 import traceback
 from typing import Dict
 
@@ -20,29 +19,13 @@ from report    import generate_pdf_report
 
 app = Flask(__name__)
 app.secret_key = "dq-tool-local-secret-change-if-shared"
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB
 
-# CSV files are written to /tmp/dq_<session_id>.csv so they survive
-# in-process restarts and Render free-tier sleep cycles.
-_TMP_DIR = "/tmp"
-
-
-def _csv_path(session_id: str) -> str:
-    return os.path.join(_TMP_DIR, f"dq_{session_id}.csv")
-
-
-# =============================================================================
-# Page routes
-# =============================================================================
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-# =============================================================================
-# API – metadata
-# =============================================================================
 
 @app.route("/api/questions", methods=["GET"])
 def get_questions():
@@ -63,12 +46,9 @@ def get_standards():
     return jsonify(grouped)
 
 
-# =============================================================================
-# API – CSV upload & preview
-# =============================================================================
-
 @app.route("/api/upload", methods=["POST"])
 def upload_csv():
+    """Accept CSV, return preview and column hints. No server-side storage needed."""
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file provided"}), 400
@@ -85,10 +65,6 @@ def upload_csv():
         if len(df) == 0:
             return jsonify({"error": "The uploaded CSV is empty"}), 400
 
-        # Save to disk so data survives server sleep/restart
-        sid = str(uuid.uuid4())
-        df.to_csv(_csv_path(sid), index=False)
-
         col_hints = {}
         for col in df.columns:
             s = df[col].dropna()
@@ -104,28 +80,33 @@ def upload_csv():
                     col_hints[col] = "text"
 
         return jsonify({
-            "session_id": sid,
-            "columns":    list(df.columns),
-            "col_hints":  col_hints,
-            "row_count":  len(df),
-            "col_count":  len(df.columns),
-            "preview":    df.head(5).fillna("").to_dict(orient="records"),
+            "columns":   list(df.columns),
+            "col_hints": col_hints,
+            "row_count": len(df),
+            "col_count": len(df.columns),
+            "preview":   df.head(5).fillna("").to_dict(orient="records"),
         })
     except Exception as e:
         return jsonify({"error": f"Upload failed: {str(e)}", "detail": traceback.format_exc()}), 500
 
 
-# =============================================================================
-# API – full assessment
-# =============================================================================
-
 @app.route("/api/assess", methods=["POST"])
 def assess():
+    """
+    Run the full assessment.
+    Expects JSON:
+    {
+        "table_name":         string,
+        "governance_answers": { "q1": 3, ... },
+        "csv_content":        string (raw CSV text) or null,
+        "column_standards":   { "col_name": "standard_id", ... }
+    }
+    """
     data = request.get_json(force=True)
 
     table_name         = data.get("table_name", "Unnamed Table")
     governance_answers = data.get("governance_answers", {})
-    session_id         = data.get("session_id")
+    csv_content        = data.get("csv_content")       # raw CSV text from browser
     column_standards   = data.get("column_standards", {})
 
     governance_answers = {k: int(v) for k, v in governance_answers.items() if v is not None}
@@ -135,16 +116,14 @@ def assess():
     except Exception as e:
         return jsonify({"error": f"Governance scoring failed: {e}"}), 500
 
-    # Load CSV from disk using session_id
+    # Profile the CSV if provided
     prof_result = None
-    if session_id:
-        path = _csv_path(session_id)
-        if os.path.exists(path):
-            try:
-                df = pd.read_csv(path)
-                prof_result = profile_dataframe(df, column_standards)
-            except Exception as e:
-                app.logger.warning(f"Profiling failed: {e}\n{traceback.format_exc()}")
+    if csv_content:
+        try:
+            df = pd.read_csv(io.StringIO(csv_content))
+            prof_result = profile_dataframe(df, column_standards)
+        except Exception as e:
+            app.logger.warning(f"Profiling failed: {e}\n{traceback.format_exc()}")
 
     combined = calculate_combined_score(
         gov_result["overall"],
@@ -163,10 +142,6 @@ def assess():
     })
 
 
-# =============================================================================
-# API – PDF report
-# =============================================================================
-
 @app.route("/api/report", methods=["POST"])
 def create_report():
     data = request.get_json(force=True)
@@ -181,14 +156,6 @@ def create_report():
         )
     except Exception as e:
         return jsonify({"error": f"PDF generation failed: {e}", "detail": traceback.format_exc()}), 500
-
-
-@app.route("/api/clear/<session_id>", methods=["DELETE"])
-def clear_session(session_id: str):
-    path = _csv_path(session_id)
-    if os.path.exists(path):
-        os.remove(path)
-    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
