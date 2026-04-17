@@ -48,20 +48,16 @@ def get_standards():
 
 @app.route("/api/upload", methods=["POST"])
 def upload_csv():
-    """Accept CSV, return preview and column hints. No server-side storage needed."""
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file provided"}), 400
-
         f = request.files["file"]
         if not f.filename or not f.filename.lower().endswith(".csv"):
             return jsonify({"error": "Please upload a .csv file"}), 400
-
         try:
             df = pd.read_csv(f)
         except Exception as e:
             return jsonify({"error": f"Could not parse CSV: {e}"}), 400
-
         if len(df) == 0:
             return jsonify({"error": "The uploaded CSV is empty"}), 400
 
@@ -92,21 +88,11 @@ def upload_csv():
 
 @app.route("/api/assess", methods=["POST"])
 def assess():
-    """
-    Run the full assessment.
-    Expects JSON:
-    {
-        "table_name":         string,
-        "governance_answers": { "q1": 3, ... },
-        "csv_content":        string (raw CSV text) or null,
-        "column_standards":   { "col_name": "standard_id", ... }
-    }
-    """
     data = request.get_json(force=True)
 
     table_name         = data.get("table_name", "Unnamed Table")
     governance_answers = data.get("governance_answers", {})
-    csv_content        = data.get("csv_content")       # raw CSV text from browser
+    csv_content        = data.get("csv_content")
     column_standards   = data.get("column_standards", {})
 
     governance_answers = {k: int(v) for k, v in governance_answers.items() if v is not None}
@@ -116,14 +102,18 @@ def assess():
     except Exception as e:
         return jsonify({"error": f"Governance scoring failed: {e}"}), 500
 
-    # Profile the CSV if provided
-    prof_result = None
+    prof_result    = None
+    profiling_error = None
+
     if csv_content:
         try:
             df = pd.read_csv(io.StringIO(csv_content))
             prof_result = profile_dataframe(df, column_standards)
         except Exception as e:
-            app.logger.warning(f"Profiling failed: {e}\n{traceback.format_exc()}")
+            profiling_error = f"{type(e).__name__}: {str(e)}"
+            app.logger.error(f"Profiling failed:\n{traceback.format_exc()}")
+    else:
+        profiling_error = "No CSV content received by server"
 
     combined = calculate_combined_score(
         gov_result["overall"],
@@ -136,6 +126,7 @@ def assess():
         "table_name":      table_name,
         "governance":      gov_result,
         "profiling":       prof_result,
+        "profiling_error": profiling_error,
         "combined":        combined,
         "tier":            tier,
         "recommendations": recs,
