@@ -229,11 +229,16 @@ async function handleFile(file) {
 
   showSpinner(true);
   try {
-    const res  = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    showSpinner(false);
-
-    if (data.error) { alert('Upload error: ' + data.error); return; }
+     const res = await fetch('/api/upload', { method: 'POST', body: formData });
+   const text = await res.text();
+   let data;
+   try { data = JSON.parse(text); } catch (_) {
+  showSpinner(false);
+  alert('Server error (status ' + res.status + '). Check Render logs.');
+  return;
+}
+showSpinner(false);
+if (data.error) { alert('Upload error: ' + data.error); return; }
 
     state.sessionId = data.session_id;
 
