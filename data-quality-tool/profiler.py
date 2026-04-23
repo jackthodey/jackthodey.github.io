@@ -31,14 +31,30 @@ except ImportError:
 def profile_dataframe(
     df: pd.DataFrame,
     column_standards: Dict[str, str],
+    column_flags: Dict[str, Dict[str, bool]] = None,
 ) -> Dict[str, Any]:
-    total_rows, total_cols = len(df), len(df.columns)
+    """
+    column_flags: { "col_name": { "mandatory": bool, "unique": bool } }
+    When provided, completeness is scored only on mandatory columns and
+    uniqueness is scored only on unique-expected columns.
+    """
+    if column_flags is None:
+        column_flags = {}
 
+    total_rows, total_cols = len(df), len(df.columns)
     if total_rows == 0:
         return _empty_result(total_cols)
 
-    completeness = _check_completeness(df)
-    uniqueness   = _check_uniqueness(df)
+    # Resolve flagged columns (must exist in dataframe)
+    mandatory_cols = [c for c, f in column_flags.items() if f.get("mandatory") and c in df.columns]
+    unique_cols    = [c for c, f in column_flags.items() if f.get("unique")    and c in df.columns]
+
+    # None signals "no flagging in use → check all" (backward-compatible)
+    comp_scope   = mandatory_cols if column_flags else None
+    unique_scope = unique_cols    if unique_cols  else None
+
+    completeness = _check_completeness(df, comp_scope)
+    uniqueness   = _check_uniqueness(df, unique_scope)
     validity     = _check_validity(df, column_standards)
     consistency  = _check_consistency(df)
     timeliness   = _check_timeliness(df, column_standards)
@@ -66,7 +82,12 @@ def profile_dataframe(
         for dim in dimensions
     )
 
-    column_stats = _build_column_stats(df, column_standards)
+    column_stats = _build_column_stats(
+        df, column_standards,
+        mandatory_cols=mandatory_cols if column_flags else None,
+        unique_cols=unique_cols        if unique_cols  else None,
+        flags_in_use=bool(column_flags),
+    )
 
     return {
         "dimensions":     dimensions,
@@ -79,47 +100,80 @@ def profile_dataframe(
     }
 
 
-def _check_completeness(df: pd.DataFrame) -> Dict[str, Any]:
-    total_cells = len(df) * len(df.columns)
-    null_counts  = df.isnull().sum()
-    total_nulls  = int(null_counts.sum())
-    completeness_rate = (total_cells - total_nulls) / total_cells if total_cells else 0.0
+def _check_completeness(df: pd.DataFrame, mandatory_cols=None) -> Dict[str, Any]:
+    """
+    mandatory_cols=None  → check all columns (original behaviour)
+    mandatory_cols=[]    → no mandatory columns flagged, return default score
+    mandatory_cols=[...] → check only those columns
+    """
+    if mandatory_cols is not None and len(mandatory_cols) == 0:
+        return {
+            "score":        70.0,
+            "rate":         None,
+            "total_nulls":  None,
+            "column_rates": {},
+            "description":  "No mandatory columns flagged – completeness not assessed",
+        }
+
+    check_cols = mandatory_cols if mandatory_cols is not None else list(df.columns)
+    subset = df[check_cols]
+    total_cells = len(subset) * len(subset.columns)
+    null_counts = subset.isnull().sum()
+    total_nulls = int(null_counts.sum())
+    rate = (total_cells - total_nulls) / total_cells if total_cells else 0.0
 
     col_rates = {
         col: round((len(df) - int(null_counts[col])) / len(df) * 100, 1)
-        for col in df.columns
+        for col in check_cols
     }
-
-    score = _rate_to_score(completeness_rate, COMPLETENESS_TARGET)
+    score  = _rate_to_score(rate, COMPLETENESS_TARGET)
+    prefix = "Mandatory columns: " if mandatory_cols is not None else ""
 
     return {
-        "score":       round(score, 2),
-        "rate":        round(completeness_rate * 100, 2),
-        "total_nulls": total_nulls,
-        "column_rates": col_rates,
-        "description": f"{completeness_rate*100:.1f}% of all cells are populated",
+        "score":         round(score, 2),
+        "rate":          round(rate * 100, 2),
+        "total_nulls":   total_nulls,
+        "column_rates":  col_rates,
+        "description":   f"{prefix}{rate*100:.1f}% of cells are populated",
     }
 
 
-def _check_uniqueness(df: pd.DataFrame) -> Dict[str, Any]:
+def _check_uniqueness(df: pd.DataFrame, unique_cols=None) -> Dict[str, Any]:
+    """
+    unique_cols=None  → row-level duplicate check (original behaviour)
+    unique_cols=[...] → check per-column uniqueness for those columns only
+    """
     n = len(df)
-    dup_count = int(df.duplicated().sum())
-    unique_row_rate = (n - dup_count) / n if n else 0.0
 
+    if unique_cols is None:
+        # Original: row-level duplicate check
+        dup_count       = int(df.duplicated().sum())
+        unique_row_rate = (n - dup_count) / n if n else 0.0
+        col_unique      = {col: round(df[col].nunique(dropna=True) / n * 100, 1) for col in df.columns}
+        score           = _rate_to_score(unique_row_rate, UNIQUENESS_TARGET)
+        return {
+            "score":             round(score, 2),
+            "unique_row_rate":   round(unique_row_rate * 100, 2),
+            "duplicate_rows":    dup_count,
+            "column_unique_pct": col_unique,
+            "description":       f"{dup_count} exact duplicate row(s) found "
+                                 f"({(1-unique_row_rate)*100:.1f}% duplication rate)",
+        }
+
+    # Per-column uniqueness for flagged columns
     col_unique = {
         col: round(df[col].nunique(dropna=True) / n * 100, 1)
-        for col in df.columns
+        for col in unique_cols
     }
-
-    score = _rate_to_score(unique_row_rate, UNIQUENESS_TARGET)
+    avg_unique = sum(col_unique.values()) / len(col_unique) if col_unique else 0.0
+    score      = _rate_to_score(avg_unique / 100, UNIQUENESS_TARGET)
 
     return {
         "score":             round(score, 2),
-        "unique_row_rate":   round(unique_row_rate * 100, 2),
-        "duplicate_rows":    dup_count,
+        "unique_row_rate":   None,
+        "duplicate_rows":    None,
         "column_unique_pct": col_unique,
-        "description":       f"{dup_count} exact duplicate row(s) found "
-                             f"({(1-unique_row_rate)*100:.1f}% duplication rate)",
+        "description":       f"Unique-expected columns: {avg_unique:.1f}% average unique values",
     }
 
 
@@ -142,7 +196,7 @@ def _check_validity(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dict[
             col_rates[col] = {"standard": std_id, "valid_pct": 0.0, "invalid_count": 0}
             continue
         valid_count = sum(check_value(v, std_id) for v in non_null.astype(str).tolist())
-        valid_pct = valid_count / len(non_null) * 100
+        valid_pct   = valid_count / len(non_null) * 100
         col_rates[col] = {
             "standard":      std_id,
             "standard_name": DATA_STANDARDS.get(std_id, {}).get("name", std_id),
@@ -152,8 +206,8 @@ def _check_validity(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dict[
         }
 
     avg_valid = sum(v["valid_pct"] for v in col_rates.values()) / len(col_rates) if col_rates else 70.0
-    score = _rate_to_score(avg_valid / 100, VALIDITY_TARGET)
-    unmapped = [c for c in df.columns if c not in column_standards]
+    score     = _rate_to_score(avg_valid / 100, VALIDITY_TARGET)
+    unmapped  = [c for c in df.columns if c not in column_standards]
 
     return {
         "score":         round(score, 2),
@@ -177,7 +231,6 @@ def _check_consistency(df: pd.DataFrame) -> Dict[str, Any]:
             col_scores[col] = round(numeric_count / len(series) * 100, 1)
             continue
 
-        # infer_datetime_format removed in pandas 2.x
         date_count = pd.to_datetime(series, errors="coerce").notna().sum()
         if date_count / len(series) >= 0.5:
             col_scores[col] = round(date_count / len(series) * 100, 1)
@@ -188,11 +241,10 @@ def _check_consistency(df: pd.DataFrame) -> Dict[str, Any]:
         cap_count   = sum(1 for v in series if v.istitle())
         dominant    = max(upper_count, lower_count, cap_count)
         case_consistency = dominant / len(series) if len(series) else 1.0
+        mixed_penalty    = 20.0 if 0.05 < (numeric_count / len(series)) < 0.95 else 0.0
+        col_scores[col]  = max(0.0, round(min(case_consistency * 100, 100.0) - mixed_penalty, 1))
 
-        mixed_penalty = 20.0 if 0.05 < (numeric_count / len(series)) < 0.95 else 0.0
-        col_scores[col] = max(0.0, round(min(case_consistency * 100, 100.0) - mixed_penalty, 1))
-
-    avg = sum(col_scores.values()) / len(col_scores) if col_scores else 100.0
+    avg   = sum(col_scores.values()) / len(col_scores) if col_scores else 100.0
     score = _rate_to_score(avg / 100, CONSISTENCY_TARGET)
 
     return {
@@ -205,10 +257,8 @@ def _check_consistency(df: pd.DataFrame) -> Dict[str, Any]:
 
 def _check_timeliness(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dict[str, Any]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=TIMELINESS_DAYS)
-    date_cols_checked = {}
-
     date_standard_ids = {sid for sid, meta in DATA_STANDARDS.items() if meta.get("is_date")}
-    mapped_date_cols = {col for col, sid in column_standards.items() if sid in date_standard_ids}
+    mapped_date_cols  = {col for col, sid in column_standards.items() if sid in date_standard_ids}
 
     if not mapped_date_cols:
         for col in df.columns:
@@ -230,16 +280,17 @@ def _check_timeliness(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dic
             "description":  "No date columns detected – timeliness not assessed",
         }
 
+    date_cols_checked = {}
     for col in mapped_date_cols:
         if col not in df.columns:
             continue
         try:
-            raw = df[col].dropna()
-            parsed = pd.to_datetime(raw, errors="coerce", utc=True)
+            raw         = df[col].dropna()
+            parsed      = pd.to_datetime(raw, errors="coerce", utc=True)
             valid_dates = parsed.dropna()
             if len(valid_dates) == 0:
                 continue
-            timely = (valid_dates >= pd.Timestamp(cutoff)).sum()
+            timely     = (valid_dates >= pd.Timestamp(cutoff)).sum()
             timely_pct = timely / len(valid_dates) * 100
             date_cols_checked[col] = {
                 "timely_pct":   round(float(timely_pct), 1),
@@ -251,7 +302,7 @@ def _check_timeliness(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dic
 
     if date_cols_checked:
         avg_timely = sum(v["timely_pct"] for v in date_cols_checked.values()) / len(date_cols_checked)
-        score = _rate_to_score(avg_timely / 100, TIMELINESS_TARGET)
+        score      = _rate_to_score(avg_timely / 100, TIMELINESS_TARGET)
     else:
         avg_timely, score = 75.0, 75.0
 
@@ -263,11 +314,11 @@ def _check_timeliness(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dic
 
 
 def _run_gx_expectations(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dict[str, Any]:
-    context = gx.get_context(mode="ephemeral")
-    ds = context.data_sources.add_pandas("dq_source")
-    asset = ds.add_dataframe_asset("dq_asset")
+    context  = gx.get_context(mode="ephemeral")
+    ds       = context.data_sources.add_pandas("dq_source")
+    asset    = ds.add_dataframe_asset("dq_asset")
     batch_def = asset.add_batch_definition_whole_dataframe("dq_batch")
-    suite = context.suites.add(gx.ExpectationSuite(name="dq_suite"))
+    suite    = context.suites.add(gx.ExpectationSuite(name="dq_suite"))
 
     for col in df.columns:
         suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column=col))
@@ -275,10 +326,10 @@ def _run_gx_expectations(df: pd.DataFrame, column_standards: Dict[str, str]) -> 
     for col, std_id in column_standards.items():
         if col not in df.columns:
             continue
-        std = DATA_STANDARDS.get(std_id, {})
+        std     = DATA_STANDARDS.get(std_id, {})
         pattern = std.get("pattern")
         if pattern and not std.get("custom_check"):
-            flags = std.get("flags", 0)
+            flags    = std.get("flags", 0)
             gx_regex = f"(?i){pattern}" if flags & re.IGNORECASE else pattern
             try:
                 suite.add_expectation(
@@ -302,22 +353,38 @@ def _run_gx_expectations(df: pd.DataFrame, column_standards: Dict[str, str]) -> 
     return {"completeness_override": override}
 
 
-def _build_column_stats(df: pd.DataFrame, column_standards: Dict[str, str]) -> List[Dict[str, Any]]:
-    stats = []
-    n = len(df)
+def _build_column_stats(
+    df: pd.DataFrame,
+    column_standards: Dict[str, str],
+    mandatory_cols=None,
+    unique_cols=None,
+    flags_in_use: bool = False,
+) -> List[Dict[str, Any]]:
+    stats         = []
+    n             = len(df)
+    mandatory_set = set(mandatory_cols or [])
+    unique_set    = set(unique_cols    or [])
+
     for col in df.columns:
-        series = df[col]
+        series       = df[col]
         null_count   = int(series.isnull().sum())
         unique_count = int(series.nunique(dropna=True))
-        completeness = round((n - null_count) / n * 100, 1) if n else 0.0
-        uniqueness   = round(unique_count / n * 100, 1) if n else 0.0
+        is_mandatory     = col in mandatory_set
+        is_unique_expected = col in unique_set
+
+        # When flags are in use, only show the stat for flagged columns
+        show_completeness = (not flags_in_use) or is_mandatory
+        show_uniqueness   = (not flags_in_use) or is_unique_expected
+
+        completeness = round((n - null_count) / n * 100, 1) if show_completeness and n else None
+        uniqueness   = round(unique_count / n * 100, 1)     if show_uniqueness   and n else None
 
         std_id = column_standards.get(col)
         validity_pct = None
         if std_id:
             non_null = series.dropna()
             if len(non_null):
-                valid_count = sum(check_value(v, std_id) for v in non_null.astype(str))
+                valid_count  = sum(check_value(v, std_id) for v in non_null.astype(str))
                 validity_pct = round(valid_count / len(non_null) * 100, 1)
             else:
                 validity_pct = 0.0
@@ -325,16 +392,18 @@ def _build_column_stats(df: pd.DataFrame, column_standards: Dict[str, str]) -> L
         sample = [str(v)[:50] for v in series.dropna().head(3).tolist()]
 
         stats.append({
-            "column":        col,
-            "dtype":         str(series.dtype),
-            "null_count":    null_count,
-            "unique_count":  unique_count,
-            "completeness":  completeness,
-            "uniqueness":    uniqueness,
-            "standard":      std_id,
-            "standard_name": DATA_STANDARDS.get(std_id, {}).get("name") if std_id else None,
-            "validity_pct":  validity_pct,
-            "sample":        sample,
+            "column":             col,
+            "dtype":              str(series.dtype),
+            "null_count":         null_count,
+            "unique_count":       unique_count,
+            "completeness":       completeness,
+            "uniqueness":         uniqueness,
+            "is_mandatory":       is_mandatory,
+            "is_unique_expected": is_unique_expected,
+            "standard":           std_id,
+            "standard_name":      DATA_STANDARDS.get(std_id, {}).get("name") if std_id else None,
+            "validity_pct":       validity_pct,
+            "sample":             sample,
         })
     return stats
 
