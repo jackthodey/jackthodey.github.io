@@ -94,6 +94,7 @@ def assess():
     governance_answers = data.get("governance_answers", {})
     csv_content        = data.get("csv_content")
     column_standards   = data.get("column_standards", {})
+    column_flags       = data.get("column_flags", {})
 
     governance_answers = {k: int(v) for k, v in governance_answers.items() if v is not None}
 
@@ -102,13 +103,13 @@ def assess():
     except Exception as e:
         return jsonify({"error": f"Governance scoring failed: {e}"}), 500
 
-    prof_result    = None
+    prof_result     = None
     profiling_error = None
 
     if csv_content:
         try:
-            df = pd.read_csv(io.StringIO(csv_content))
-            prof_result = profile_dataframe(df, column_standards)
+            df          = pd.read_csv(io.StringIO(csv_content))
+            prof_result = profile_dataframe(df, column_standards, column_flags)
         except Exception as e:
             profiling_error = f"{type(e).__name__}: {str(e)}"
             app.logger.error(f"Profiling failed:\n{traceback.format_exc()}")
