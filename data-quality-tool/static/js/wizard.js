@@ -11,6 +11,7 @@ const state = {
   answers:          {},
   csvContent:       null,   // raw CSV text stored in browser
   columnStandards:  {},
+  columnFlags:      {},     // { col: { mandatory: bool, unique: bool } }
   assessResult:     null,
 };
 
@@ -193,10 +194,8 @@ async function handleFile(file) {
 
   showSpinner(true);
 
-  // Read the file as text in the browser — no server round-trip for storage
   const csvText = await readFileAsText(file);
 
-  // Send to server just for preview & column hints
   const formData = new FormData();
   formData.append('file', file);
 
@@ -212,8 +211,8 @@ async function handleFile(file) {
     showSpinner(false);
     if (data.error) { alert('Upload error: ' + data.error); return; }
 
-    // Store raw CSV text in state — sent directly with assessment request
-    state.csvContent = csvText;
+    state.csvContent   = csvText;
+    state.columnFlags  = {};  // reset flags when a new file is uploaded
 
     const successEl = document.getElementById('upload-success');
     successEl.textContent = `✓ ${file.name} uploaded — ${data.row_count.toLocaleString()} rows · ${data.col_count} columns`;
@@ -263,6 +262,8 @@ function renderColumnMapping(columns, colHints) {
   columns.forEach(col => {
     const hint        = colHints[col] || 'text';
     const autoSuggest = hint === 'date' ? 'date_iso' : '';
+    const saved       = state.columnFlags[col] || { mandatory: false, unique: false };
+
     const row = document.createElement('div');
     row.className = 'mapping-row';
     row.innerHTML = `
@@ -273,7 +274,15 @@ function renderColumnMapping(columns, colHints) {
       <select>
         <option value="">No standard / Skip</option>
         ${optionGroups}
-      </select>`;
+      </select>
+      <div class="col-flags">
+        <label class="flag-label">
+          <input type="checkbox" class="flag-mandatory" ${saved.mandatory ? 'checked' : ''}> Mandatory
+        </label>
+        <label class="flag-label">
+          <input type="checkbox" class="flag-unique" ${saved.unique ? 'checked' : ''}> Unique
+        </label>
+      </div>`;
     grid.appendChild(row);
 
     const sel = row.querySelector('select');
@@ -284,6 +293,16 @@ function renderColumnMapping(columns, colHints) {
     sel.addEventListener('change', e => {
       if (e.target.value) state.columnStandards[col] = e.target.value;
       else delete state.columnStandards[col];
+    });
+
+    // Restore initial flag state
+    state.columnFlags[col] = { mandatory: saved.mandatory, unique: saved.unique };
+
+    row.querySelector('.flag-mandatory').addEventListener('change', e => {
+      state.columnFlags[col].mandatory = e.target.checked;
+    });
+    row.querySelector('.flag-unique').addEventListener('change', e => {
+      state.columnFlags[col].unique = e.target.checked;
     });
   });
 }
@@ -296,8 +315,9 @@ async function runAssessment() {
     const payload = {
       table_name:         state.tableName,
       governance_answers: state.answers,
-      csv_content:        state.csvContent,   // raw CSV text, parsed server-side
+      csv_content:        state.csvContent,
       column_standards:   state.columnStandards,
+      column_flags:       state.columnFlags,
     };
 
     const res  = await fetch('/api/assess', {
