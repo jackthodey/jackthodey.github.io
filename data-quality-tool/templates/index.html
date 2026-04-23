@@ -117,9 +117,13 @@
 
     /* ── Column mapping ── */
     .mapping-grid { display: grid; gap: 10px; margin-top: 16px; }
-    .mapping-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; align-items: center; padding: 10px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+    .mapping-row { display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 12px; align-items: center; padding: 10px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
     .col-name { font-size: 13px; font-weight: 500; }
     .col-hint { font-size: 11px; color: var(--muted); }
+    .col-flags { display: flex; flex-direction: column; gap: 6px; }
+    .flag-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; user-select: none; }
+    .flag-label input[type=checkbox] { cursor: pointer; accent-color: var(--accent); width: 14px; height: 14px; }
+    .flag-label:hover { color: var(--text); }
 
     /* ── Spinner ── */
     .spinner-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.8); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
@@ -184,7 +188,9 @@
     .gap-8 { gap: 8px; }
     .hidden { display: none !important; }
     .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
-    .tag-blue { background: var(--accent-l); color: var(--accent); }
+    .tag-blue   { background: var(--accent-l); color: var(--accent); }
+    .tag-amber  { background: #FEF3C7; color: var(--amber); }
+    .tag-purple { background: #EDE9FE; color: #7C3AED; }
 
     @media (max-width: 640px) {
       .score-cards { grid-template-columns: 1fr; }
@@ -298,10 +304,11 @@
               </div>
 
               <div class="mt-24">
-                <div class="section-heading">Column → Standard Mapping</div>
+                <div class="section-heading">Column Configuration</div>
                 <p class="text-sm text-muted mb-4">
-                  Map each column to a reference data standard to enable validity checking.
-                  Leave unmapped columns as "No standard".
+                  Map each column to a data standard for validity checking. Mark columns as
+                  <strong>Mandatory</strong> to include them in completeness scoring, and
+                  <strong>Unique</strong> to test them for uniqueness.
                 </p>
                 <div class="mapping-grid" id="mapping-grid"></div>
               </div>
@@ -376,7 +383,7 @@
     </main>
   </div><!-- /shell -->
 
-  <script src="/static/js/wizard.js?v=2" defer></script>
-  <script src="/static/js/results.js?v=2" defer></script>
+  <script src="/static/js/wizard.js?v=3" defer></script>
+  <script src="/static/js/results.js?v=3" defer></script>
 </body>
 </html>
