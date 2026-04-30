@@ -12,6 +12,7 @@ import pandas as pd
 
 from config import (
     COMPLETENESS_TARGET, UNIQUENESS_TARGET, VALIDITY_TARGET,
+    DATA_USE_TYPE_WEIGHTS, DATA_USE_TYPE_LABELS, DEFAULT_DATA_USE_TYPE,
     PROFILING_DIMENSION_WEIGHTS,
 )
 from standards import DATA_STANDARDS, check_value
@@ -30,27 +31,26 @@ def profile_dataframe(
     df: pd.DataFrame,
     column_standards: Dict[str, str],
     column_flags: Dict[str, Dict[str, bool]] = None,
+    data_use_type: str = None,
 ) -> Dict[str, Any]:
     """
-    column_flags: { "col_name": { "mandatory": bool, "unique": bool } }
-
-    Scoring is scoped to explicitly selected columns only:
-      - Completeness: mandatory-flagged columns
-      - Uniqueness:   unique-flagged columns
-      - Validity:     standard-mapped columns
-    Unflagged/unmapped columns do not affect any dimension score.
+    Scores completeness, uniqueness and validity against columns the user
+    explicitly selected.  Weights are determined by the chosen data use type.
     """
     if column_flags is None:
         column_flags = {}
+    if data_use_type is None:
+        data_use_type = DEFAULT_DATA_USE_TYPE
+
+    weights = DATA_USE_TYPE_WEIGHTS.get(data_use_type, PROFILING_DIMENSION_WEIGHTS)
 
     total_rows, total_cols = len(df), len(df.columns)
     if total_rows == 0:
-        return _empty_result(total_cols)
+        return _empty_result(total_cols, data_use_type, weights)
 
     mandatory_cols = [c for c, f in column_flags.items() if f.get("mandatory") and c in df.columns]
     unique_cols    = [c for c, f in column_flags.items() if f.get("unique")    and c in df.columns]
 
-    # None → no flags in use, fall back to original all-column behaviour
     comp_scope   = mandatory_cols if column_flags else None
     unique_scope = unique_cols    if unique_cols  else None
 
@@ -75,7 +75,7 @@ def profile_dataframe(
     }
 
     overall = sum(
-        dimensions[dim]["score"] * PROFILING_DIMENSION_WEIGHTS[dim]
+        dimensions[dim]["score"] * weights.get(dim, 0)
         for dim in dimensions
     )
 
@@ -94,14 +94,13 @@ def profile_dataframe(
         "col_count":      total_cols,
         "duplicate_rows": int(df.duplicated().sum()),
         "gx_used":        gx_used,
+        "data_use_type":  data_use_type,
+        "type_label":     DATA_USE_TYPE_LABELS.get(data_use_type, data_use_type),
+        "weights_used":   weights,
     }
 
 
 def _check_completeness(df: pd.DataFrame, mandatory_cols=None) -> Dict[str, Any]:
-    """
-    Score = non-null cells / total cells, scoped to mandatory columns only.
-    If no mandatory columns flagged, falls back to checking all columns.
-    """
     if mandatory_cols is not None and len(mandatory_cols) == 0:
         return {
             "score":        70.0,
@@ -132,11 +131,6 @@ def _check_completeness(df: pd.DataFrame, mandatory_cols=None) -> Dict[str, Any]
 
 
 def _check_uniqueness(df: pd.DataFrame, unique_cols=None) -> Dict[str, Any]:
-    """
-    unique_cols=None  → row-level duplicate check across whole dataset.
-    unique_cols=[...] → per-column unique-value rate for flagged columns only.
-    Score = average (unique_values / total_rows) across flagged columns.
-    """
     n = len(df)
 
     if unique_cols is None:
@@ -167,7 +161,6 @@ def _check_uniqueness(df: pd.DataFrame, unique_cols=None) -> Dict[str, Any]:
 
 
 def _check_validity(df: pd.DataFrame, column_standards: Dict[str, str]) -> Dict[str, Any]:
-    """Score = % of values conforming to their mapped standard, across mapped columns only."""
     if not column_standards:
         return {
             "score":         70.0,
@@ -259,9 +252,9 @@ def _build_column_stats(
     unique_set    = set(unique_cols    or [])
 
     for col in df.columns:
-        series       = df[col]
-        null_count   = int(series.isnull().sum())
-        unique_count = int(series.nunique(dropna=True))
+        series             = df[col]
+        null_count         = int(series.isnull().sum())
+        unique_count       = int(series.nunique(dropna=True))
         is_mandatory       = col in mandatory_set
         is_unique_expected = col in unique_set
 
@@ -304,13 +297,16 @@ def _rate_to_score(rate: float, target: float) -> float:
     return round(min(rate / target, 1.0) * 100.0, 2)
 
 
-def _empty_result(col_count: int) -> Dict[str, Any]:
+def _empty_result(col_count: int, data_use_type: str, weights: dict) -> Dict[str, Any]:
     return {
-        "dimensions":     {d: {"score": 0, "description": "Empty dataset"} for d in PROFILING_DIMENSION_WEIGHTS},
+        "dimensions":     {d: {"score": 0, "description": "Empty dataset"} for d in weights},
         "overall_score":  0.0,
         "column_stats":   [],
         "row_count":      0,
         "col_count":      col_count,
         "duplicate_rows": 0,
         "gx_used":        False,
+        "data_use_type":  data_use_type,
+        "type_label":     DATA_USE_TYPE_LABELS.get(data_use_type, data_use_type),
+        "weights_used":   weights,
     }
