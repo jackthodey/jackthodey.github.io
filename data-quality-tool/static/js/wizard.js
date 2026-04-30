@@ -4,14 +4,15 @@
 
 const state = {
   tableName:        '',
+  dataUseType:      'analytical',   // selected on step 1
   questions:        [],
   dimensionLabels:  {},
   standards:        {},
   currentDimension: 0,
   answers:          {},
-  csvContent:       null,   // raw CSV text stored in browser
+  csvContent:       null,
   columnStandards:  {},
-  columnFlags:      {},     // { col: { mandatory: bool, unique: bool } }
+  columnFlags:      {},
   assessResult:     null,
 };
 
@@ -72,6 +73,15 @@ function updateStepIndicator(stepId) {
 function initStep1() {
   const input = document.getElementById('table-name-input');
   const btn   = document.getElementById('btn-begin');
+
+  // Data use type selector
+  document.querySelectorAll('.type-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      state.dataUseType = card.dataset.type;
+    });
+  });
 
   btn.addEventListener('click', () => {
     const name = input.value.trim();
@@ -193,9 +203,7 @@ async function handleFile(file) {
   if (!file.name.toLowerCase().endsWith('.csv')) { alert('Please upload a .csv file.'); return; }
 
   showSpinner(true);
-
   const csvText = await readFileAsText(file);
-
   const formData = new FormData();
   formData.append('file', file);
 
@@ -211,8 +219,8 @@ async function handleFile(file) {
     showSpinner(false);
     if (data.error) { alert('Upload error: ' + data.error); return; }
 
-    state.csvContent   = csvText;
-    state.columnFlags  = {};  // reset flags when a new file is uploaded
+    state.csvContent  = csvText;
+    state.columnFlags = {};
 
     const successEl = document.getElementById('upload-success');
     successEl.textContent = `✓ ${file.name} uploaded — ${data.row_count.toLocaleString()} rows · ${data.col_count} columns`;
@@ -295,9 +303,7 @@ function renderColumnMapping(columns, colHints) {
       else delete state.columnStandards[col];
     });
 
-    // Restore initial flag state
     state.columnFlags[col] = { mandatory: saved.mandatory, unique: saved.unique };
-
     row.querySelector('.flag-mandatory').addEventListener('change', e => {
       state.columnFlags[col].mandatory = e.target.checked;
     });
@@ -314,6 +320,7 @@ async function runAssessment() {
   try {
     const payload = {
       table_name:         state.tableName,
+      data_use_type:      state.dataUseType,
       governance_answers: state.answers,
       csv_content:        state.csvContent,
       column_standards:   state.columnStandards,
