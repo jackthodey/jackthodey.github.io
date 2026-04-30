@@ -16,6 +16,7 @@ from standards import DATA_STANDARDS
 from profiler  import profile_dataframe
 from scorer    import calculate_governance_score, calculate_combined_score, get_tier, get_recommendations
 from report    import generate_pdf_report
+from config    import DEFAULT_DATA_USE_TYPE
 
 app = Flask(__name__)
 app.secret_key = "dq-tool-local-secret-change-if-shared"
@@ -95,6 +96,7 @@ def assess():
     csv_content        = data.get("csv_content")
     column_standards   = data.get("column_standards", {})
     column_flags       = data.get("column_flags", {})
+    data_use_type      = data.get("data_use_type", DEFAULT_DATA_USE_TYPE)
 
     governance_answers = {k: int(v) for k, v in governance_answers.items() if v is not None}
 
@@ -109,7 +111,7 @@ def assess():
     if csv_content:
         try:
             df          = pd.read_csv(io.StringIO(csv_content))
-            prof_result = profile_dataframe(df, column_standards, column_flags)
+            prof_result = profile_dataframe(df, column_standards, column_flags, data_use_type)
         except Exception as e:
             profiling_error = f"{type(e).__name__}: {str(e)}"
             app.logger.error(f"Profiling failed:\n{traceback.format_exc()}")
@@ -125,6 +127,7 @@ def assess():
 
     return jsonify({
         "table_name":      table_name,
+        "data_use_type":   data_use_type,
         "governance":      gov_result,
         "profiling":       prof_result,
         "profiling_error": profiling_error,
