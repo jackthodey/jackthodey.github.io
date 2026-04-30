@@ -14,12 +14,11 @@ function renderResults(result) {
       completeness: 'Completeness',
       uniqueness:   'Uniqueness',
       validity:     'Validity',
-      consistency:  'Consistency',
-      timeliness:   'Timeliness',
     };
     const profScores = {};
     Object.entries(result.profiling.dimensions).forEach(([k, v]) => { profScores[k] = v.score; });
     renderDimensionBars('prof-bars', profScores, profDimLabels);
+    renderWeightsNote(result.profiling);
     renderColumnTable(result.profiling.column_stats || []);
   }
 
@@ -118,6 +117,18 @@ function renderDimensionBars(containerId, scores, labels) {
   });
 }
 
+// ── Weights note (data use type) ──────────────────────────────────────────────
+
+function renderWeightsNote(profiling) {
+  const el = document.getElementById('prof-weights-note');
+  if (!el || !profiling.type_label || !profiling.weights_used) return;
+  const w = profiling.weights_used;
+  const parts = Object.entries(w).map(([k, v]) =>
+    `${k.charAt(0).toUpperCase() + k.slice(1)} ${Math.round(v * 100)}%`
+  );
+  el.textContent = `Scored as: ${profiling.type_label} — ${parts.join(' · ')}`;
+}
+
 // ── Column statistics table ───────────────────────────────────────────────────
 
 function renderColumnTable(columnStats) {
@@ -128,10 +139,8 @@ function renderColumnTable(columnStats) {
   const showValidity = columnStats.some(c => c.validity_pct !== null && c.validity_pct !== undefined);
   const showFlags    = columnStats.some(c => c.is_mandatory || c.is_unique_expected);
 
-  const completenessNote = showFlags
-    ? ' <span style="font-weight:400;opacity:.6">(M only)</span>' : '';
-  const uniquenessNote   = showFlags
-    ? ' <span style="font-weight:400;opacity:.6">(U only)</span>' : '';
+  const completenessNote = showFlags ? ' <span style="font-weight:400;opacity:.6">(M only)</span>' : '';
+  const uniquenessNote   = showFlags ? ' <span style="font-weight:400;opacity:.6">(U only)</span>' : '';
 
   table.innerHTML = `
     <thead>
