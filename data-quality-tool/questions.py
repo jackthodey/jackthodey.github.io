@@ -1,26 +1,50 @@
 # =============================================================================
 # DATA QUALITY ASSESSMENT TOOL – GOVERNANCE QUESTIONNAIRE
 # =============================================================================
-# 20 questions across 5 DAMA-DMBOK2 dimensions.
-# Each option value (1–4) represents a maturity level:
-#   1 = Ad hoc / none   2 = Informal   3 = Defined   4 = Optimised / enforced
-# Reference: DAMA-DMBOK2, DCAM (EDM Council), ISO 8000, ISO/IEC 27001, GDPR
+# This file defines the 20-question governance maturity questionnaire.
+# Questions are grouped into 5 DAMA-DMBOK2 dimensions (4 questions each).
+#
+# MATURITY SCALE: Every question has exactly 4 answer options, each assigned
+# a maturity value from 1 to 4:
+#   1 = Ad hoc / none     – No practice exists at all
+#   2 = Informal          – Practice exists but undocumented and inconsistent
+#   3 = Defined           – Formal, documented practice in place
+#   4 = Optimised         – Formal, enforced, and continuously improved
+#
+# The scorer normalises these 1–4 values to 0–100 using:
+#   normalised = (value - 1) / 3 * 100
+# So:  1 → 0,   2 → 33.3,   3 → 66.7,   4 → 100
+#
+# References: DAMA-DMBOK2, DCAM (EDM Council), ISO 8000, ISO/IEC 27001, GDPR
 # =============================================================================
 
+# DIMENSION_LABELS maps the internal dimension key (used in the questions list
+# and in the scoring engine) to a human-readable display label shown in the UI
+# and PDF report.
 DIMENSION_LABELS = {
-    "governance_ownership":  "Governance & Ownership",
-    "quality_management":    "Data Quality Management",
-    "lineage_documentation": "Lineage & Documentation",
-    "security_access":       "Security & Access Control",
-    "training_compliance":   "Training & Compliance",
+    "governance_ownership":  "Governance & Ownership",    # Q1–Q4
+    "quality_management":    "Data Quality Management",   # Q5–Q8
+    "lineage_documentation": "Lineage & Documentation",   # Q9–Q12
+    "security_access":       "Security & Access Control", # Q13–Q16
+    "training_compliance":   "Training & Compliance",     # Q17–Q20
 }
 
+# QUESTIONS is a list of 20 dicts.  Each dict has these keys:
+#   "id"        – unique question identifier (q1…q20) used as the answer dict key
+#   "dimension" – which of the 5 dimensions this question belongs to (must match
+#                 a key in DIMENSION_LABELS and GOVERNANCE_DIMENSION_WEIGHTS)
+#   "text"      – the question text displayed to the user
+#   "reference" – the governance standard or framework section this question maps to
+#   "options"   – list of 4 dicts, each with:
+#                   "value" (int 1–4) and "label" (string shown on the radio card)
 QUESTIONS = [
 
     # ── DIMENSION 1: Governance & Ownership ──────────────────────────────────
+    # These 4 questions assess whether the data table has formal ownership,
+    # stewardship, purpose documentation, and a governing policy in place.
     {
-        "id": "q1",
-        "dimension": "governance_ownership",
+        "id": "q1",                          # Question identifier – must be unique across all 20 questions
+        "dimension": "governance_ownership", # Assigns this question to the Governance & Ownership dimension
         "text": "Does this data table have a formally designated Data Owner?",
         "reference": "DAMA-DMBOK2 Ch.3 – Data Governance; DCAM Capability 1.2",
         "options": [
@@ -68,6 +92,9 @@ QUESTIONS = [
     },
 
     # ── DIMENSION 2: Data Quality Management ─────────────────────────────────
+    # These 4 questions assess whether DQ rules are defined, whether quality
+    # is actively monitored, whether issues have a resolution process, and
+    # whether a formal DQ assessment has ever been conducted.
     {
         "id": "q5",
         "dimension": "quality_management",
@@ -118,6 +145,9 @@ QUESTIONS = [
     },
 
     # ── DIMENSION 3: Lineage & Documentation ─────────────────────────────────
+    # These 4 questions assess whether data origin and transformation are
+    # documented, whether a data dictionary exists, whether schema changes
+    # are managed, and whether business terms are consistently understood.
     {
         "id": "q9",
         "dimension": "lineage_documentation",
@@ -168,6 +198,9 @@ QUESTIONS = [
     },
 
     # ── DIMENSION 4: Security & Access Control ────────────────────────────────
+    # These 4 questions assess whether data is classified by sensitivity,
+    # whether access is role-controlled, whether PII is protected, and
+    # whether audit logs are maintained and reviewed.
     {
         "id": "q13",
         "dimension": "security_access",
@@ -218,6 +251,9 @@ QUESTIONS = [
     },
 
     # ── DIMENSION 5: Training & Compliance ───────────────────────────────────
+    # These 4 questions assess whether data entry users are trained, whether
+    # source systems enforce technical controls, whether regulatory obligations
+    # are identified and evidenced, and whether a retention/disposal policy exists.
     {
         "id": "q17",
         "dimension": "training_compliance",
