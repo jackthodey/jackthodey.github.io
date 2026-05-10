@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Property Investment Optimiser — Australia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #F8F9FC; --card: #FFFFFF; --accent: #4361EE; --accent-l: #EEF1FD;
+      --text: #1A1A2E; --muted: #6B7280; --border: #E5E7EB;
+      --green: #16A34A; --green-l: #DCFCE7;
+      --red: #DC2626; --red-l: #FEE2E2;
+      --amber: #D97706; --amber-l: #FEF3C7;
+      --radius: 12px; --shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    }
+    html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Topbar */
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 54px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; font-size: 15px; letter-spacing: -.2px; }
+    .topbar-brand span { color: var(--accent); }
+    .topbar-tag { background: var(--accent-l); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: .3px; }
+    .topbar-spacer { flex: 1; }
+    .topbar-note { font-size: 12px; color: var(--muted); }
+
+    /* Layout */
+    .main { flex: 1; padding: 24px; }
+    .layout { display: grid; grid-template-columns: 400px 1fr; gap: 24px; max-width: 1300px; margin: 0 auto; align-items: start; }
+
+    /* Card */
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; margin-bottom: 16px; }
+    .card:last-child { margin-bottom: 0; }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; }
+
+    /* Tabs */
+    .tabs { display: flex; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px; margin-bottom: 16px; gap: 2px; }
+    .tab { flex: 1; padding: 8px 4px; border: none; background: none; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--muted); border-radius: 8px; transition: all .18s; white-space: nowrap; }
+    .tab:hover { background: var(--bg); color: var(--text); }
+    .tab.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Form elements */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; }
+    label .hint { font-weight: 400; font-size: 11px; opacity: .75; }
+    input[type=number], select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; color: var(--text); background: var(--bg); outline: none; transition: border-color .18s; -moz-appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    input[type=number]:focus, select:focus { border-color: var(--accent); background: #fff; }
+    .input-prefix { position: relative; }
+    .input-prefix::before { content: attr(data-prefix); position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; z-index: 1; }
+    .input-prefix input { padding-left: 24px; }
+    .input-suffix { position: relative; }
+    .input-suffix::after { content: attr(data-suffix); position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+    .input-suffix input { padding-right: 32px; }
+    select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+    /* Info box */
+    .info-box { background: var(--accent-l); border: 1px solid #c7d2fe; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #3730a3; margin-bottom: 14px; }
+    .info-box strong { font-weight: 600; }
+    .warn-box { background: var(--amber-l); border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-bottom: 14px; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; margin-top: 4px; }
+
+    /* Toggle switch */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+    .toggle-label { font-size: 13px; font-weight: 500; }
+    .toggle-sub { font-size: 11px; color: var(--muted); }
+    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; cursor: pointer; transition: background .2s; }
+    .toggle-slider::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::after { transform: translateX(18px); }
+
+    /* KPI grid */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .kpi { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+    .kpi-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -.5px; line-height: 1.2; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .kpi-value.pos { color: var(--green); }
+    .kpi-value.neg { color: var(--red); }
+    .kpi-value.neutral { color: var(--text); }
+
+    /* Status banner */
+    .status-banner { border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 500; display: flex; align-items: flex-start; gap: 10px; }
+    .status-banner.negative { background: var(--red-l); color: #991b1b; border: 1px solid #fca5a5; }
+    .status-banner.positive { background: var(--green-l); color: #14532d; border: 1px solid #86efac; }
+    .status-banner .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .status-banner .body { line-height: 1.5; }
+    .status-banner .body strong { font-weight: 700; }
+
+    /* Charts */
+    .chart-wrap { position: relative; height: 220px; margin-top: 4px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin-top: 4px; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
+    thead th { background: var(--bg); padding: 9px 12px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    thead th:first-child { text-align: left; }
+    tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tbody td:first-child { text-align: left; font-weight: 600; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg); }
+    .td-pos { color: var(--green); font-weight: 600; }
+    .td-neg { color: var(--red); font-weight: 600; }
+    .td-highlight { background: #fffbeb; }
+    tbody tr.optimal-row td { background: #f0fdf4; }
+
+    /* Optimal badge */
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
+    .badge-green { background: var(--green-l); color: var(--green); }
+    .badge-blue { background: var(--accent-l); color: var(--accent); }
+    .badge-amber { background: var(--amber-l); color: var(--amber); }
+
+    /* Disclaimer */
+    .disclaimer { font-size: 11px; color: var(--muted); padding: 12px 16px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); line-height: 1.6; margin-top: 4px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .main { padding: 12px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .field-row, .field-row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <span class="topbar-brand">Property <span>Optimiser</span></span>
+    <span class="topbar-tag">🇦🇺 Australia</span>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-note">Live calculations · 2024–25 tax rates</span>
+  </div>
+
+  <div class="main">
+    <div class="layout">
+
+      <!-- ─── INPUTS COLUMN ─── -->
+      <div class="inputs-col">
+        <div class="tabs">
+          <button class="tab active" data-tab="property">Property &amp; Finance</button>
+          <button class="tab" data-tab="rental">Rental &amp; Costs</button>
+          <button class="tab" data-tab="tax">Tax &amp; Depreciation</button>
+          <button class="tab" data-tab="growth">Growth &amp; Exit</button>
+        </div>
+
+        <!-- TAB: Property & Finance -->
+        <div id="tab-property" class="tab-panel active card">
+          <div class="card-title">Property &amp; Finance</div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Purchase Price</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="purchasePrice" value="750000" min="0" step="5000"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>State / Territory</label>
+              <select id="state">
+                <option value="NSW">NSW</option>
+                <option value="VIC">VIC</option>
+                <option value="QLD">QLD</option>
+                <option value="SA">SA</option>
+                <option value="WA">WA</option>
+                <option value="ACT">ACT</option>
+                <option value="NT">NT</option>
+                <option value="TAS">TAS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="info-box" id="stampDutyInfo">Stamp duty: calculating…</div>
+
+          <div class="field">
+            <label>Total Buying Costs <span class="hint">(stamp duty + legal + inspection)</span></label>
+            <div class="input-prefix" data-prefix="$">
+              <input type="number" id="buyingCosts" value="30000" min="0" step="500"/>
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+          <div class="section-label">Mortgage</div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Loan Amount</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="loanAmount" value="600000" min="0" step="5000"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>LVR <span class="hint">(auto)</span></label>
+              <div class="input-suffix" data-suffix="%">
+                <input type="number" id="lvr" value="80" min="0" max="100" step="1"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Interest Rate</label>
+              <div class="input-suffix" data-suffix="% p.a.">
+                <input type="number" id="interestRate" value="6.50" min="0" max="20" step="0.05"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Loan Type</label>
+              <select id="loanType">
+                <option value="IO">Interest Only</option>
+                <option value="PI">Principal &amp; Interest</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="ioFields" class="field-row">
+            <div class="field">
+              <label>IO Period <span class="hint">(years)</span></label>
+              <input type="number" id="ioPeriod" value="5" min="1" max="15" step="1"/>
+            </div>
+            <div class="field">
+              <label>Total Loan Term <span class="hint">(years)</span></label>
+              <input type="number" id="loanTerm" value="30" min="5" max="40" step="1"/>
+            </div>
+          </div>
+          <div id="piFields" class="field" style="display:none">
+            <label>Loan Term</label>
+            <div class="input-suffix" data-suffix="years">
+              <input type="number" id="loanTermPI" value="30" min="5" max="40" step="1"/>
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+          <div class="field">
+            <label>Capital Improvements <span class="hint">(renovation budget, adds to cost base)</span></label>
+            <div class="input-prefix" data-prefix="$">
+              <input type="number" id="capitalImprovements" value="0" min="0" step="1000"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Rental & Costs -->
+        <div id="tab-rental" class="tab-panel card">
+          <div class="card-title">Rental Income &amp; Expenses</div>
+
+          <div class="section-label">Rental Income</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Weekly Rent</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="weeklyRent" value="650" min="0" step="10"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Vacancy Rate</label>
+              <div class="input-suffix" data-suffix="%">
+                <input type="number" id="vacancyRate" value="3" min="0" max="30" step="0.5"/>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Annual Rent Growth</label>
+              <div class="input-suffix" data-suffix="% p.a.">
+                <input type="number" id="rentGrowth" value="3" min="0" max="15" step="0.25"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Mgmt Fee</label>
+              <div class="input-suffix" data-suffix="% of rent">
+                <input type="number" id="mgmtFee" value="8.5" min="0" max="20" step="0.5"/>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+          <div class="section-label">Annual Expenses</div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Council Rates</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="councilRates" value="2000" min="0" step="100"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Water Rates</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="waterRates" value="800" min="0" step="100"/>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Landlord Insurance</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="insurance" value="1500" min="0" step="100"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Strata / Body Corp</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="strata" value="0" min="0" step="200"/>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Maintenance &amp; Repairs</label>
+              <div class="input-suffix" data-suffix="% of value">
+                <input type="number" id="maintenanceRate" value="0.50" min="0" max="5" step="0.05"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Land Tax <span class="hint">(annual est.)</span></label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="landTax" value="0" min="0" step="100"/>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Other Expenses</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="otherExpenses" value="500" min="0" step="100"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Expense Inflation</label>
+              <div class="input-suffix" data-suffix="% p.a.">
+                <input type="number" id="expenseGrowth" value="3" min="0" max="10" step="0.25"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="warn-box" style="margin-top:8px">
+            <strong>Land tax tip:</strong> Estimate your land value at ~40% of purchase price then check your state threshold.
+            Vic: &gt;$300k land @0.2–2.55% · NSW: &gt;$1.075m · QLD: &gt;$600k · SA: &gt;$755k · WA: &gt;$300k.
+          </div>
+        </div>
+
+        <!-- TAB: Tax & Depreciation -->
+        <div id="tab-tax" class="tab-panel card">
+          <div class="card-title">Tax &amp; Depreciation</div>
+
+          <div class="section-label">Your Tax Position</div>
+          <div class="field">
+            <label>Annual Salary / Other Income <span class="hint">(before rental income)</span></label>
+            <div class="input-prefix" data-prefix="$">
+              <input type="number" id="annualIncome" value="120000" min="0" step="5000"/>
+            </div>
+          </div>
+          <div class="info-box" id="taxRateInfo">Marginal rate: calculating…</div>
+
+          <hr class="section-divider"/>
+          <div class="section-label">Depreciation Deductions</div>
+
+          <div class="info-box">
+            Depreciation is a non-cash tax deduction that reduces your taxable rental income.
+            <strong>Div 43</strong> (building): 2.5%/yr of construction cost for 40 yrs (post-Sep 1987 builds).
+            <strong>Div 40</strong> (plant &amp; equipment): fixtures, appliances etc — get a quantity surveyor report for accurate figures.
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Div 43 Depreciation <span class="hint">(building, annual)</span></label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="buildingDeprn" value="5000" min="0" step="250"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Div 40 Year 1 <span class="hint">(plant &amp; equip)</span></label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="div40Year1" value="3000" min="0" step="250"/>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Div 40 Annual Decline Rate <span class="hint">(D&amp;E assets depreciate each year)</span></label>
+            <div class="input-suffix" data-suffix="% per year">
+              <input type="number" id="div40Decline" value="20" min="5" max="50" step="5"/>
+            </div>
+          </div>
+
+          <div class="warn-box" style="margin-top:4px">
+            <strong>Note:</strong> Div 43 deductions do NOT reduce your CGT cost base. Div 40 cost base for each item IS reduced by claimed depreciation. This model uses a simplified cost base for CGT (purchase price + buying costs + capital improvements).
+          </div>
+        </div>
+
+        <!-- TAB: Growth & Exit -->
+        <div id="tab-growth" class="tab-panel card">
+          <div class="card-title">Growth Assumptions &amp; Exit</div>
+
+          <div class="section-label">Capital Growth</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Capital Growth Rate</label>
+              <div class="input-suffix" data-suffix="% p.a.">
+                <input type="number" id="capitalGrowth" value="5" min="0" max="20" step="0.25"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Analysis Period</label>
+              <div class="input-suffix" data-suffix="years">
+                <input type="number" id="holdPeriod" value="20" min="2" max="30" step="1"/>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+          <div class="section-label">Sale Costs</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Agent Commission</label>
+              <div class="input-suffix" data-suffix="% of sale">
+                <input type="number" id="sellingCosts" value="2.5" min="0" max="5" step="0.1"/>
+              </div>
+            </div>
+            <div class="field">
+              <label>Other Selling Costs</label>
+              <div class="input-prefix" data-prefix="$">
+                <input type="number" id="otherSellingCosts" value="2000" min="0" step="500"/>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+          <div class="section-label">CGT Notes</div>
+          <div class="info-box">
+            Australia's 50% CGT discount applies when you hold the property for <strong>more than 12 months</strong>.
+            Capital gain = Sale price − selling costs − cost base.
+            The taxable gain (after discount) is added to your assessable income and taxed at your marginal rate.
+          </div>
+
+          <div class="warn-box">
+            <strong>Optimal sell timing:</strong> The Hold Period chart shows IRR and total profit for every possible sale year.
+            IRR peaks earlier than total profit — consider your target metric.
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          <strong>Disclaimer:</strong> This tool is for illustrative purposes only and does not constitute financial, tax, or legal advice.
+          Tax rates reflect 2024–25 ATO brackets. Stamp duty calculations are approximate and may differ from official assessments.
+          Consult a qualified accountant, financial adviser, and/or solicitor before making investment decisions.
+        </div>
+      </div>
+
+      <!-- ─── RESULTS COLUMN ─── -->
+      <div class="results-col">
+
+        <div id="statusBanner" class="status-banner negative">
+          <span class="icon">📊</span>
+          <div class="body">Calculating…</div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">After-Tax Cashflow (Yr 1)</div>
+            <div class="kpi-value" id="kpiCashflow">—</div>
+            <div class="kpi-sub" id="kpiCashflowSub">per year</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Gross Rental Yield</div>
+            <div class="kpi-value neutral" id="kpiGrossYield">—</div>
+            <div class="kpi-sub">of purchase price</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Tax Benefit (Yr 1)</div>
+            <div class="kpi-value pos" id="kpiTaxBenefit">—</div>
+            <div class="kpi-sub" id="kpiTaxBenefitSub">from negative gearing</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Equity at Year <span id="kpiEquityYear">10</span></div>
+            <div class="kpi-value neutral" id="kpiEquity">—</div>
+            <div class="kpi-sub" id="kpiEquitySub">property value − mortgage</div>
+          </div>
+        </div>
+
+        <!-- Cashflow Chart -->
+        <div class="card">
+          <div class="card-title">Annual After-Tax Cashflow &amp; Tax Benefit</div>
+          <div class="chart-wrap"><canvas id="cashflowChart"></canvas></div>
+        </div>
+
+        <!-- Hold Period Chart -->
+        <div class="card">
+          <div class="card-title">Hold Period Optimisation — when to sell?</div>
+          <div id="optimalNote" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div class="chart-wrap" style="height:240px"><canvas id="holdChart"></canvas></div>
+        </div>
+
+        <!-- Year by Year Table -->
+        <div class="card">
+          <div class="card-title">Year-by-Year Analysis</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Property Value</th>
+                  <th>Net Rent</th>
+                  <th>Cash Expenses</th>
+                  <th>Depreciation</th>
+                  <th>Tax Benefit</th>
+                  <th>After-Tax CF</th>
+                  <th>Equity</th>
+                  <th>Sell → Net Profit</th>
+                </tr>
+              </thead>
+              <tbody id="yearTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /results-col -->
+    </div><!-- /layout -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+const fmt = (n, d = 0) => n == null ? '—' : (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtPct = (n, d = 1) => n == null ? '—' : n.toFixed(d) + '%';
+const fmtNum = (n, d = 0) => n == null ? '—' : n.toLocaleString('en-AU', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function pmt(r, n, pv) {
+  if (r === 0) return pv / n;
+  return pv * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+}
+
+function calcIRR(cfs) {
+  // Newton-Raphson
+  let r = 0.08;
+  for (let i = 0; i < 200; i++) {
+    let npv = 0, dnpv = 0;
+    for (let t = 0; t < cfs.length; t++) {
+      const disc = Math.pow(1 + r, t);
+      npv += cfs[t] / disc;
+      dnpv -= t * cfs[t] / (disc * (1 + r));
+    }
+    if (Math.abs(dnpv) < 1e-12) break;
+    const delta = npv / dnpv;
+    r -= delta;
+    if (Math.abs(delta) < 1e-9) break;
+  }
+  return (r > -1 && r < 100 && isFinite(r)) ? r : null;
+}
+
+// ─── Tax & Stamp Duty ─────────────────────────────────────────────────────────
+function getStampDuty(state, price) {
+  switch (state) {
+    case 'NSW':
+      if (price <= 16000)    return price * 0.0125;
+      if (price <= 35000)    return 200    + (price - 16000)   * 0.015;
+      if (price <= 93000)    return 485    + (price - 35000)   * 0.0175;
+      if (price <= 351000)   return 1500   + (price - 93000)   * 0.035;
+      if (price <= 1168000)  return 10530  + (price - 351000)  * 0.045;
+      return                        47295  + (price - 1168000) * 0.055;
+    case 'VIC':
+      if (price <= 25000)    return price * 0.014;
+      if (price <= 130000)   return 350    + (price - 25000)   * 0.024;
+      if (price <= 960000)   return 2870   + (price - 130000)  * 0.06;
+      return price * 0.055;
+    case 'QLD':
+      if (price <= 5000)     return 0;
+      if (price <= 75000)    return          (price - 5000)    * 0.015;
+      if (price <= 540000)   return 1050   + (price - 75000)   * 0.035;
+      if (price <= 1000000)  return 17325  + (price - 540000)  * 0.045;
+      return                        38025  + (price - 1000000) * 0.0575;
+    case 'SA':
+      if (price <= 12000)    return price * 0.01;
+      if (price <= 30000)    return 120    + (price - 12000)   * 0.02;
+      if (price <= 50000)    return 480    + (price - 30000)   * 0.03;
+      if (price <= 100000)   return 1080   + (price - 50000)   * 0.035;
+      if (price <= 200000)   return 2830   + (price - 100000)  * 0.04;
+      if (price <= 250000)   return 6830   + (price - 200000)  * 0.0425;
+      if (price <= 300000)   return 8955   + (price - 250000)  * 0.0475;
+      if (price <= 500000)   return 11330  + (price - 300000)  * 0.05;
+      return                        21330  + (price - 500000)  * 0.055;
+    case 'WA':
+      if (price <= 100000)   return price * 0.019;
+      if (price <= 200000)   return 1900   + (price - 100000)  * 0.0285;
+      if (price <= 300000)   return 4750   + (price - 200000)  * 0.038;
+      if (price <= 400000)   return 8550   + (price - 300000)  * 0.0475;
+      if (price <= 500000)   return 13300  + (price - 400000)  * 0.0515;
+      return                        18450  + (price - 500000)  * 0.0515;
+    case 'ACT':
+      if (price <= 200000)   return price * 0.022;
+      if (price <= 300000)   return 4400   + (price - 200000)  * 0.034;
+      if (price <= 500000)   return 7800   + (price - 300000)  * 0.044;
+      if (price <= 750000)   return 16600  + (price - 500000)  * 0.054;
+      if (price <= 1000000)  return 30100  + (price - 750000)  * 0.059;
+      if (price <= 1454999)  return 44850  + (price - 1000000) * 0.065;
+      return                        74425  + (price - 1455000) * 0.07;
+    case 'TAS':
+      if (price <= 3000)     return price * 0.0200;
+      if (price <= 25000)    return 60     + (price - 3000)    * 0.0175;
+      if (price <= 75000)    return 445    + (price - 25000)   * 0.025;
+      if (price <= 200000)   return 1695   + (price - 75000)   * 0.03;
+      if (price <= 375000)   return 5445   + (price - 200000)  * 0.035;
+      if (price <= 725000)   return 11570  + (price - 375000)  * 0.04;
+      return                        25570  + (price - 725000)  * 0.045;
+    case 'NT':
+      if (price < 525000)    return Math.max(0, 0.06571441 * price * price / 1e6 + 15.01 * price / 1000 - 69.57);
+      return                        23928.6 + (price - 525000) * 0.0495;
+    default:
+      return price * 0.04;
+  }
+}
+
+function getMarginalRate(income) {
+  // 2024–25 ATO marginal rates + 2% Medicare levy
+  if (income <= 18200)  return 0;
+  if (income <= 45000)  return 0.19 + 0.02;   // 21%
+  if (income <= 135000) return 0.325 + 0.02;  // 34.5%
+  if (income <= 190000) return 0.37 + 0.02;   // 39%
+  return                       0.45 + 0.02;   // 47%
+}
+
+// ─── Core Model ───────────────────────────────────────────────────────────────
+function getInputs() {
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const s = id => document.getElementById(id).value;
+  const loanType = s('loanType');
+  return {
+    purchasePrice:       g('purchasePrice'),
+    state:               s('state'),
+    buyingCosts:         g('buyingCosts'),
+    loanAmount:          g('loanAmount'),
+    loanType,
+    interestRate:        g('interestRate'),
+    ioPeriod:            loanType === 'IO' ? g('ioPeriod') : 0,
+    loanTerm:            loanType === 'IO' ? g('loanTerm') : g('loanTermPI'),
+    weeklyRent:          g('weeklyRent'),
+    vacancyRate:         g('vacancyRate'),
+    rentGrowth:          g('rentGrowth'),
+    mgmtFee:             g('mgmtFee'),
+    councilRates:        g('councilRates'),
+    waterRates:          g('waterRates'),
+    insurance:           g('insurance'),
+    strata:              g('strata'),
+    maintenanceRate:     g('maintenanceRate'),
+    landTax:             g('landTax'),
+    otherExpenses:       g('otherExpenses'),
+    expenseGrowth:       g('expenseGrowth'),
+    annualIncome:        g('annualIncome'),
+    buildingDeprn:       g('buildingDeprn'),
+    div40Year1:          g('div40Year1'),
+    div40Decline:        g('div40Decline'),
+    capitalImprovements: g('capitalImprovements'),
+    capitalGrowth:       g('capitalGrowth'),
+    sellingCosts:        g('sellingCosts'),
+    otherSellingCosts:   g('otherSellingCosts'),
+    holdPeriod:          Math.max(2, Math.min(30, Math.round(g('holdPeriod')))),
+  };
+}
+
+function runModel(inp) {
+  const marginalRate = getMarginalRate(inp.annualIncome);
+  const initialEquity = inp.purchasePrice + inp.buyingCosts + inp.capitalImprovements - inp.loanAmount;
+  const costBase = inp.purchasePrice + inp.buyingCosts + inp.capitalImprovements;
+  const monthlyRate = inp.interestRate / 100 / 12;
+
+  // Fixed monthly P&I payment (calculated at start of P&I phase)
+  const piTermMonths = inp.loanType === 'IO'
+    ? Math.max(1, (inp.loanTerm - inp.ioPeriod) * 12)
+    : Math.max(1, inp.loanTerm * 12);
+  const monthlyPayment = pmt(monthlyRate, piTermMonths, inp.loanAmount);
+
+  let loanBalance = inp.loanAmount;
+  let cumulativeCashflow = 0;
+  const years = [];
+  const irrCashflows = [-Math.max(1, initialEquity)];
+
+  for (let y = 1; y <= 30; y++) {
+    const propValue = inp.purchasePrice * Math.pow(1 + inp.capitalGrowth / 100, y);
+    const propValueStart = inp.purchasePrice * Math.pow(1 + inp.capitalGrowth / 100, y - 1);
+
+    // Gross rent
+    const annualRent = inp.weeklyRent * 52 * Math.pow(1 + inp.rentGrowth / 100, y - 1);
+    const grossRent = annualRent * (1 - inp.vacancyRate / 100);
+
+    // Loan repayments
+    const isIO = inp.loanType === 'IO' && y <= inp.ioPeriod;
+    let yearInterest = 0, yearPrincipal = 0;
+    if (loanBalance <= 0) {
+      yearInterest = 0; yearPrincipal = 0;
+    } else if (isIO) {
+      yearInterest = loanBalance * inp.interestRate / 100;
+      yearPrincipal = 0;
+    } else {
+      let bal = loanBalance;
+      for (let m = 0; m < 12; m++) {
+        if (bal <= 0) break;
+        const mi = bal * monthlyRate;
+        const mp = Math.max(0, Math.min(monthlyPayment - mi, bal));
+        yearInterest += mi;
+        yearPrincipal += mp;
+        bal = Math.max(0, bal - mp);
+      }
+      loanBalance = Math.max(0, loanBalance - yearPrincipal);
+    }
+
+    // Cash expenses
+    const gf = Math.pow(1 + inp.expenseGrowth / 100, y - 1);
+    const mgmt = grossRent * inp.mgmtFee / 100;
+    const cashExp = mgmt
+      + inp.councilRates * gf
+      + inp.waterRates * gf
+      + inp.insurance * gf
+      + inp.strata * gf
+      + (propValueStart * inp.maintenanceRate / 100)
+      + inp.landTax * gf
+      + inp.otherExpenses * gf;
+
+    // Depreciation (non-cash)
+    const div43 = inp.buildingDeprn;
+    const div40 = inp.div40Year1 * Math.pow(1 - inp.div40Decline / 100, y - 1);
+    const totalDeprn = div43 + div40;
+
+    // Taxable rental income (ATO perspective)
+    const taxableRental = grossRent - yearInterest - cashExp - totalDeprn;
+    const taxEffect = -taxableRental * marginalRate; // positive = refund (negatively geared)
+
+    // Actual cashflow
+    const preTaxCF = grossRent - yearInterest - cashExp - yearPrincipal;
+    const afterTaxCF = preTaxCF + taxEffect;
+    cumulativeCashflow += afterTaxCF;
+
+    // Sale analysis
+    const salePrice = propValue;
+    const agentFee = salePrice * inp.sellingCosts / 100 + inp.otherSellingCosts;
+    const capitalGain = Math.max(0, salePrice - agentFee - costBase);
+    // 50% CGT discount if y >= 1 (always true; held > 12 months)
+    const taxableGain = capitalGain * 0.5;
+    const cgtPayable = taxableGain * marginalRate;
+    const netSaleProceeds = salePrice - agentFee - loanBalance - cgtPayable;
+    const totalNetProfit = netSaleProceeds + cumulativeCashflow - initialEquity;
+
+    // IRR up to this year
+    const irrCfs = [...irrCashflows];
+    for (let i = 0; i < years.length; i++) irrCfs.push(years[i].afterTaxCF);
+    irrCfs.push(afterTaxCF + netSaleProceeds);
+    const irr = calcIRR(irrCfs);
+
+    years.push({
+      y, propValue, grossRent, yearInterest, yearPrincipal, cashExp,
+      totalDeprn, taxableRental, taxEffect, preTaxCF, afterTaxCF,
+      loanBalance, equity: propValue - loanBalance,
+      cumulativeCashflow, saleProfit: totalNetProfit,
+      cgtPayable, netSaleProceeds,
+      irr: irr != null ? irr * 100 : null,
+    });
+  }
+
+  return { years, initialEquity, marginalRate, costBase };
+}
+
+// ─── Chart instances ──────────────────────────────────────────────────────────
+let cashflowChartInst = null, holdChartInst = null;
+
+function destroyCharts() {
+  if (cashflowChartInst) { cashflowChartInst.destroy(); cashflowChartInst = null; }
+  if (holdChartInst)     { holdChartInst.destroy();     holdChartInst = null; }
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const inp = getInputs();
+  const { years, initialEquity, marginalRate } = runModel(inp);
+  const displayYears = years.slice(0, inp.holdPeriod);
+  const yr1 = years[0];
+
+  // Status banner
+  const banner = document.getElementById('statusBanner');
+  const isNegGeared = yr1.taxableRental < 0;
+  if (isNegGeared) {
+    banner.className = 'status-banner negative';
+    const weeklyGap = Math.abs(yr1.afterTaxCF) / 52;
+    banner.innerHTML = `<span class="icon">📉</span><div class="body">
+      <strong>Negatively geared.</strong> Your property runs at a tax loss of ${fmt(yr1.taxableRental)}/yr,
+      generating a tax refund of <strong>${fmt(yr1.taxEffect)}/yr</strong> at your ${fmtPct(marginalRate * 100, 0)} marginal rate.
+      After-tax out-of-pocket: <strong>${fmt(Math.abs(yr1.afterTaxCF))}/yr (${fmt(weeklyGap)}/wk)</strong>.
+    </div>`;
+  } else {
+    banner.className = 'status-banner positive';
+    banner.innerHTML = `<span class="icon">📈</span><div class="body">
+      <strong>Positively geared.</strong> Your property generates a tax profit of ${fmt(yr1.taxableRental)}/yr,
+      with an additional tax liability of ${fmt(-yr1.taxEffect)}/yr.
+      After-tax cashflow: <strong>${fmt(yr1.afterTaxCF)}/yr (${fmt(yr1.afterTaxCF / 52)}/wk)</strong>.
+    </div>`;
+  }
+
+  // KPIs
+  const grossYield = (inp.weeklyRent * 52) / inp.purchasePrice * 100;
+  document.getElementById('kpiCashflow').textContent = fmt(yr1.afterTaxCF);
+  document.getElementById('kpiCashflow').className = 'kpi-value ' + (yr1.afterTaxCF >= 0 ? 'pos' : 'neg');
+  document.getElementById('kpiCashflowSub').textContent = `${fmt(yr1.afterTaxCF / 52)}/wk · pre-tax ${fmt(yr1.preTaxCF)}/yr`;
+  document.getElementById('kpiGrossYield').textContent = fmtPct(grossYield);
+  document.getElementById('kpiTaxBenefit').textContent = yr1.taxEffect > 0 ? fmt(yr1.taxEffect) : fmt(yr1.taxEffect);
+  document.getElementById('kpiTaxBenefit').className = 'kpi-value ' + (yr1.taxEffect >= 0 ? 'pos' : 'neg');
+  document.getElementById('kpiTaxBenefitSub').textContent = yr1.taxEffect > 0
+    ? `${fmtPct(marginalRate * 100, 0)} marginal rate benefit`
+    : `tax liability at ${fmtPct(marginalRate * 100, 0)} marginal rate`;
+
+  const midYr = years[Math.min(9, years.length - 1)];
+  document.getElementById('kpiEquityYear').textContent = midYr.y;
+  document.getElementById('kpiEquity').textContent = fmt(midYr.equity);
+  document.getElementById('kpiEquitySub').textContent = `${fmt(midYr.propValue)} value − ${fmt(midYr.loanBalance)} mortgage`;
+
+  // Tax rate info box
+  document.getElementById('taxRateInfo').innerHTML =
+    `Marginal rate (incl. Medicare): <strong>${fmtPct(marginalRate * 100, 0)}</strong> on your ${fmt(inp.annualIncome)} income.
+     Every $1 of rental loss saves you <strong>${fmtPct(marginalRate * 100, 0)}c</strong> in tax.`;
+
+  // Stamp duty info
+  const sd = getStampDuty(inp.state, inp.purchasePrice);
+  document.getElementById('stampDutyInfo').innerHTML =
+    `Estimated stamp duty (${inp.state}, investment): <strong>${fmt(sd)}</strong>
+     (~${fmtPct(sd / inp.purchasePrice * 100)} of purchase price). Click the buying costs field to adjust.`;
+
+  // ── Charts ──────────────────────────────────────────────────────────────────
+  destroyCharts();
+
+  const labels = displayYears.map(r => `Yr ${r.y}`);
+
+  // Chart 1: Cashflow
+  cashflowChartInst = new Chart(document.getElementById('cashflowChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Pre-Tax Cashflow',
+          data: displayYears.map(r => Math.round(r.preTaxCF)),
+          backgroundColor: displayYears.map(r => r.preTaxCF >= 0 ? '#bbf7d0' : '#fecaca'),
+          borderColor:     displayYears.map(r => r.preTaxCF >= 0 ? '#16a34a' : '#dc2626'),
+          borderWidth: 1, borderRadius: 3,
+        },
+        {
+          label: 'Tax Benefit / (Liability)',
+          data: displayYears.map(r => Math.round(r.taxEffect)),
+          backgroundColor: '#bfdbfe', borderColor: '#3b82f6',
+          borderWidth: 1, borderRadius: 3,
+        },
+        {
+          label: 'After-Tax Cashflow',
+          data: displayYears.map(r => Math.round(r.afterTaxCF)),
+          type: 'line', borderColor: '#4361EE',
+          backgroundColor: 'rgba(67,97,238,0.08)',
+          pointBackgroundColor: '#4361EE', pointRadius: 3,
+          fill: true, tension: 0.3, yAxisID: 'y',
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => `  ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          ticks: { font: { size: 11 }, callback: v => fmt(v) },
+          grid: { color: '#f3f4f6' },
+        },
+      },
+    },
+  });
+
+  // Chart 2: Hold period optimiser (show all 30 years for context)
+  const allYears = years;
+  const validIRR = allYears.map(r => r.irr);
+  const profits = allYears.map(r => Math.round(r.saleProfit));
+
+  let optIRRIdx = 0, optProfitIdx = 0;
+  validIRR.forEach((v, i) => { if (v != null && (validIRR[optIRRIdx] == null || v > validIRR[optIRRIdx])) optIRRIdx = i; });
+  profits.forEach((v, i) => { if (v > profits[optProfitIdx]) optProfitIdx = i; });
+
+  const optIRRYr = allYears[optIRRIdx];
+  const optProfitYr = allYears[optProfitIdx];
+
+  document.getElementById('optimalNote').innerHTML =
+    `<strong>Best IRR:</strong> sell in Year ${optIRRYr?.y ?? '—'} → <span style="color:var(--accent)">${optIRRYr?.irr != null ? fmtPct(optIRRYr.irr) : '—'} p.a.</span> &nbsp;|&nbsp; ` +
+    `<strong>Max profit:</strong> sell in Year ${optProfitYr?.y ?? '—'} → <span style="color:var(--green)">${fmt(optProfitYr?.saleProfit)}</span> total gain`;
+
+  holdChartInst = new Chart(document.getElementById('holdChart'), {
+    data: {
+      labels: allYears.map(r => `Yr ${r.y}`),
+      datasets: [
+        {
+          type: 'line',
+          label: 'Total Net Profit ($)',
+          data: profits,
+          borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
+          fill: true, tension: 0.3, pointRadius: 2, yAxisID: 'yProfit',
+        },
+        {
+          type: 'line',
+          label: 'IRR (% p.a.)',
+          data: validIRR,
+          borderColor: '#4361EE', backgroundColor: 'transparent',
+          borderDash: [4, 3], tension: 0.3, pointRadius: 2, yAxisID: 'yIRR',
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.yAxisID === 'yIRR'
+              ? `  ${ctx.dataset.label}: ${ctx.parsed.y != null ? fmtPct(ctx.parsed.y) : '—'}`
+              : `  ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        yProfit: {
+          position: 'left', grid: { color: '#f3f4f6' },
+          ticks: { font: { size: 11 }, callback: v => '$' + (v >= 1e6 ? (v/1e6).toFixed(1)+'m' : (v/1e3).toFixed(0)+'k') },
+        },
+        yIRR: {
+          position: 'right', grid: { display: false },
+          ticks: { font: { size: 11 }, callback: v => v != null ? fmtPct(v) : '' },
+        },
+      },
+    },
+  });
+
+  // ── Table ───────────────────────────────────────────────────────────────────
+  const tbody = document.getElementById('yearTable');
+  tbody.innerHTML = '';
+  displayYears.forEach((r, i) => {
+    const isOptIRR    = i === optIRRIdx && optIRRIdx < displayYears.length;
+    const isOptProfit = i === optProfitIdx && optProfitIdx < displayYears.length;
+    const tr = document.createElement('tr');
+    if (isOptIRR || isOptProfit) tr.className = 'optimal-row';
+    tr.innerHTML = `
+      <td>
+        ${r.y}
+        ${isOptIRR    ? '<span class="badge badge-blue" style="margin-left:4px">Best IRR</span>' : ''}
+        ${isOptProfit ? '<span class="badge badge-green" style="margin-left:4px">Max Profit</span>' : ''}
+      </td>
+      <td>${fmt(r.propValue)}</td>
+      <td>${fmt(r.grossRent)}</td>
+      <td class="td-neg">${fmt(-r.cashExp - r.yearInterest)}</td>
+      <td class="td-neg">${fmt(-r.totalDeprn)}</td>
+      <td class="${r.taxEffect >= 0 ? 'td-pos' : 'td-neg'}">${fmt(r.taxEffect)}</td>
+      <td class="${r.afterTaxCF >= 0 ? 'td-pos' : 'td-neg'}">${fmt(r.afterTaxCF)}</td>
+      <td>${fmt(r.equity)}</td>
+      <td class="${r.saleProfit >= 0 ? 'td-pos' : 'td-neg'}">${fmt(r.saleProfit)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── Loan type toggle ─────────────────────────────────────────────────────────
+document.getElementById('loanType').addEventListener('change', function () {
+  const isIO = this.value === 'IO';
+  document.getElementById('ioFields').style.display = isIO ? '' : 'none';
+  document.getElementById('piFields').style.display = isIO ? 'none' : '';
+  render();
+});
+
+// ─── LVR ↔ Loan Amount sync ───────────────────────────────────────────────────
+let syncLock = false;
+function syncLVR(source) {
+  if (syncLock) return;
+  syncLock = true;
+  const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+  if (source === 'loan') {
+    const loan = parseFloat(document.getElementById('loanAmount').value) || 0;
+    document.getElementById('lvr').value = price > 0 ? (loan / price * 100).toFixed(1) : 0;
+  } else {
+    const lvr = parseFloat(document.getElementById('lvr').value) || 0;
+    document.getElementById('loanAmount').value = Math.round(price * lvr / 100);
+  }
+  syncLock = false;
+}
+document.getElementById('loanAmount').addEventListener('input', () => { syncLVR('loan'); render(); });
+document.getElementById('lvr').addEventListener('input', () => { syncLVR('lvr'); render(); });
+
+// ─── Stamp duty auto-fill ─────────────────────────────────────────────────────
+function autoFillBuyingCosts() {
+  const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+  const state = document.getElementById('state').value;
+  const sd = getStampDuty(state, price);
+  // Add ~$2,500 for legal/conveyancing
+  document.getElementById('buyingCosts').value = Math.round(sd + 2500);
+}
+document.getElementById('purchasePrice').addEventListener('input', () => { syncLVR('loan'); autoFillBuyingCosts(); render(); });
+document.getElementById('state').addEventListener('input', () => { autoFillBuyingCosts(); render(); });
+
+// ─── Wire all other inputs ────────────────────────────────────────────────────
+document.querySelectorAll('input[type=number], select').forEach(el => {
+  if (!['purchasePrice','state','loanAmount','lvr'].includes(el.id)) {
+    el.addEventListener('input', render);
+  }
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+autoFillBuyingCosts();
+render();
+</script>
+</body>
+</html>
