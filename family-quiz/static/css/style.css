@@ -165,6 +165,16 @@ h2 { margin-top: 0; }
 
 .secondary-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); }
 
+.notice {
+  background: #f1effc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--primary-dark);
+  font-size: 0.9rem;
+}
+.notice:empty { display: none; }
+
 .error { color: var(--red); min-height: 1.2em; }
 .muted { color: var(--muted); }
 

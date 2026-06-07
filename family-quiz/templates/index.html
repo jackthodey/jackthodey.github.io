@@ -23,8 +23,8 @@
         <h2>Mark your quiz</h2>
         <p>Grade your own paper quiz against the answer key, then enter your results here.</p>
 
-        <label class="field-label" for="week-input">Week ending</label>
-        <input type="date" id="week-input" class="date-input">
+        <label class="field-label" for="week-input">Week ending (Sunday)</label>
+        <select id="week-input" class="date-input"></select>
 
         <p>Who's playing?</p>
         <div id="player-buttons" class="player-grid"></div>
@@ -37,8 +37,10 @@
           <strong id="current-player"></strong> &middot; week ending <strong id="current-week"></strong>
         </p>
         <p class="muted">Tap right or wrong for each question, based on the printed answer key.</p>
+        <p id="existing-notice" class="notice"></p>
         <div id="mark-grid" class="mark-grid"></div>
         <button id="submit-marks" class="primary-btn">Submit Results</button>
+        <button id="clear-marks" class="secondary-btn">Clear My Marks</button>
         <button id="back-to-setup" class="secondary-btn">Back</button>
         <p id="mark-error" class="error"></p>
       </div>

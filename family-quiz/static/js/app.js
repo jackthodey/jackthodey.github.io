@@ -24,8 +24,10 @@
 
     currentPlayer: document.getElementById("current-player"),
     currentWeek: document.getElementById("current-week"),
+    existingNotice: document.getElementById("existing-notice"),
     markGrid: document.getElementById("mark-grid"),
     submitMarks: document.getElementById("submit-marks"),
+    clearMarks: document.getElementById("clear-marks"),
     backToSetup: document.getElementById("back-to-setup"),
     markError: document.getElementById("mark-error"),
 
@@ -54,12 +56,31 @@
 
   els.tabBtns.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
-  function mostRecentSaturday() {
+  function recentSundays(count) {
     const d = new Date();
-    const day = d.getDay(); // 0 = Sunday ... 6 = Saturday
-    const diff = (day + 1) % 7; // days since last Saturday
-    d.setDate(d.getDate() - diff);
-    return d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - d.getDay()); // most recent Sunday (today if Sunday)
+    const sundays = [];
+    for (let i = 0; i < count; i++) {
+      const copy = new Date(d);
+      copy.setDate(copy.getDate() - i * 7);
+      sundays.push(copy.toISOString().slice(0, 10));
+    }
+    return sundays;
+  }
+
+  function formatDate(iso) {
+    const d = new Date(`${iso}T00:00:00`);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function populateWeekOptions() {
+    els.weekInput.innerHTML = "";
+    recentSundays(8).forEach((iso) => {
+      const opt = document.createElement("option");
+      opt.value = iso;
+      opt.textContent = formatDate(iso);
+      els.weekInput.appendChild(opt);
+    });
   }
 
   // ---------------------------------------------------------------- setup
@@ -86,7 +107,7 @@
     });
   }
 
-  function selectPlayer(name) {
+  async function selectPlayer(name) {
     const week = els.weekInput.value;
     if (!week) {
       els.setupError.textContent = "Please choose the week-ending date first.";
@@ -97,12 +118,26 @@
     state.marks = new Array(state.questionCount).fill(null);
     els.setupError.textContent = "";
     els.currentPlayer.textContent = name;
-    els.currentWeek.textContent = week;
+    els.currentWeek.textContent = formatDate(week);
+    els.existingNotice.textContent = "";
+
+    try {
+      const res = await fetch(`/api/submission/${encodeURIComponent(week)}/${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (data.existing) {
+        state.marks = data.existing.results.slice(0, state.questionCount);
+        while (state.marks.length < state.questionCount) state.marks.push(null);
+        els.existingNotice.textContent =
+          `You already entered results for ${formatDate(week)} (scored ${data.existing.score}/${data.existing.total}). ` +
+          `Change any answers below and submit again to update them, or clear to start over.`;
+      }
+    } catch (e) {
+      // No existing entry to preload — proceed with a blank sheet.
+    }
+
     renderMarkGrid();
     showScreen("screen-mark");
   }
-
-  els.weekInput.value = mostRecentSaturday();
 
   // ------------------------------------------------------------- mark grid
   function renderMarkGrid() {
@@ -129,6 +164,12 @@
       row.appendChild(right);
       row.appendChild(wrong);
       els.markGrid.appendChild(row);
+
+      const existing = state.marks[i];
+      if (existing !== null && existing !== undefined) {
+        right.classList.toggle("selected", existing === true);
+        wrong.classList.toggle("selected", existing === false);
+      }
     }
   }
 
@@ -137,6 +178,13 @@
     row.querySelector(".mark-right").classList.toggle("selected", value === true);
     row.querySelector(".mark-wrong").classList.toggle("selected", value === false);
   }
+
+  els.clearMarks.addEventListener("click", () => {
+    state.marks = new Array(state.questionCount).fill(null);
+    els.existingNotice.textContent = "";
+    els.markError.textContent = "";
+    renderMarkGrid();
+  });
 
   els.backToSetup.addEventListener("click", () => {
     state.player = null;
@@ -237,6 +285,7 @@
     }
   }
 
+  populateWeekOptions();
   loadConfig();
   showScreen("screen-setup");
 })();

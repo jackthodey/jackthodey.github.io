@@ -58,6 +58,19 @@ def save_submission(week_id: str, name: str, results: List[bool], score: int, to
         )
 
 
+def get_submission(week_id: str, name: str) -> Optional[Dict]:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM submissions WHERE week_id = ? AND name = ?", (week_id, name)
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def delete_submission(week_id: str, name: str) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM submissions WHERE week_id = ? AND name = ?", (week_id, name))
+
+
 def get_week_submissions(week_id: str) -> List[Dict]:
     with _connect() as conn:
         rows = conn.execute(

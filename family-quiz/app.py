@@ -34,6 +34,28 @@ def get_config():
     return jsonify({"players": PLAYERS, "question_count": QUESTION_COUNT})
 
 
+@app.route("/api/submission/<week_id>/<name>", methods=["GET"])
+def existing_submission(week_id: str, name: str):
+    if not _WEEK_ID_RE.match(week_id) or name not in PLAYERS:
+        return jsonify({"error": "Invalid week or family member"}), 400
+    submission = db.get_submission(week_id, name)
+    if not submission:
+        return jsonify({"existing": None})
+    return jsonify({"existing": {
+        "results": submission["results"],
+        "score": submission["score"],
+        "total": submission["total"],
+    }})
+
+
+@app.route("/api/submission/<week_id>/<name>", methods=["DELETE"])
+def clear_submission(week_id: str, name: str):
+    if not _WEEK_ID_RE.match(week_id) or name not in PLAYERS:
+        return jsonify({"error": "Invalid week or family member"}), 400
+    db.delete_submission(week_id, name)
+    return jsonify({"cleared": True})
+
+
 @app.route("/api/submit", methods=["POST"])
 def submit():
     data = request.get_json(silent=True) or {}
