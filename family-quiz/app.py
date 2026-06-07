@@ -1,75 +1,71 @@
 # =============================================================================
 # FAMILY QUIZ TOOL – FLASK APPLICATION
 # =============================================================================
+"""Family members mark their own paper quiz right/wrong, pick their name and
+the quiz's week-ending date, and the tool tallies scores, a weekly
+leaderboard, and a "best of" combined family score (a question counts as a
+team win if at least one family member got it right).
+"""
 from __future__ import annotations
+
+import re
 
 from flask import Flask, jsonify, render_template, request
 
 import db
-import quiz_store
-from config import PLAYERS
-from scorer import combined_score, grade_submission
+from config import PLAYERS, QUESTION_COUNT
+from scorer import combined_score, tally
 
 app = Flask(__name__)
 app.secret_key = "family-quiz-local-secret-change-if-shared"
+
+_WEEK_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 db.init_db()
 
 
 @app.route("/")
 def index():
-    return render_template("index.html", players=PLAYERS)
+    return render_template("index.html")
 
 
-@app.route("/api/quiz/current", methods=["GET"])
-def current_quiz():
-    quiz = quiz_store.get_current_quiz()
-    if not quiz:
-        return jsonify({"error": "No quiz has been published yet"}), 404
-    return jsonify({
-        "id": quiz["id"],
-        "title": quiz.get("title", quiz["id"]),
-        "questions": quiz_store.public_questions(quiz),
-        "players": PLAYERS,
-    })
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    return jsonify({"players": PLAYERS, "question_count": QUESTION_COUNT})
 
 
 @app.route("/api/submit", methods=["POST"])
 def submit():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
-    quiz_id = (data.get("quiz_id") or "").strip()
-    answers = data.get("answers") or {}
+    week_id = (data.get("week_id") or "").strip()
+    results = data.get("results")
 
     if name not in PLAYERS:
         return jsonify({"error": "Please select a valid family member"}), 400
-    if not isinstance(answers, dict):
-        return jsonify({"error": "Answers must be an object of question id -> answer"}), 400
+    if not _WEEK_ID_RE.match(week_id):
+        return jsonify({"error": "Please pick a valid week-ending date"}), 400
+    if not isinstance(results, list) or not results or len(results) > 200:
+        return jsonify({"error": "Results must be a list of right/wrong answers"}), 400
 
-    quiz = quiz_store.get_quiz(quiz_id) if quiz_id else quiz_store.get_current_quiz()
-    if not quiz:
-        return jsonify({"error": "Quiz not found"}), 404
-
-    answers = {str(k): v for k, v in answers.items()}
-    result = grade_submission(quiz, answers)
-    db.save_submission(quiz["id"], name, answers, result["score"], result["total"])
+    results = [bool(r) for r in results]
+    summary = tally(results)
+    db.save_submission(week_id, name, results, summary["score"], summary["total"])
 
     return jsonify({
-        "quiz_id": quiz["id"],
+        "week_id": week_id,
         "name": name,
-        "score": result["score"],
-        "total": result["total"],
-        "breakdown": result["breakdown"],
+        "score": summary["score"],
+        "total": summary["total"],
     })
 
 
-@app.route("/api/results/<quiz_id>", methods=["GET"])
-def results(quiz_id: str):
-    quiz = quiz_store.get_quiz(quiz_id)
-    if not quiz:
-        return jsonify({"error": "Quiz not found"}), 404
+@app.route("/api/results/<week_id>", methods=["GET"])
+def results(week_id: str):
+    if not _WEEK_ID_RE.match(week_id):
+        return jsonify({"error": "Invalid week"}), 400
 
-    submissions = db.get_quiz_submissions(quiz_id)
+    submissions = db.get_week_submissions(week_id)
     weekly = [{
         "name": s["name"],
         "score": s["score"],
@@ -79,16 +75,21 @@ def results(quiz_id: str):
 
     family = None
     if submissions:
-        family = combined_score(quiz, submissions)
+        question_count = max(s["total"] for s in submissions)
+        family = combined_score(question_count, submissions)
 
     return jsonify({
-        "quiz_id": quiz["id"],
-        "title": quiz.get("title", quiz["id"]),
+        "week_id": week_id,
         "weekly": weekly,
         "submitted_count": len(submissions),
         "player_count": len(PLAYERS),
         "family": family,
     })
+
+
+@app.route("/api/weeks", methods=["GET"])
+def weeks():
+    return jsonify({"weeks": db.get_recent_weeks()})
 
 
 @app.route("/api/leaderboard", methods=["GET"])

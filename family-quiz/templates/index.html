@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Family Quiz Night</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2">
 </head>
 <body>
   <div class="app">
@@ -19,25 +19,33 @@
     <!-- PLAY FLOW -->
     <section id="tab-play" class="tab-panel active">
 
-      <div id="screen-name" class="screen active">
-        <h2 id="quiz-title">Loading this week's quiz&hellip;</h2>
+      <div id="screen-setup" class="screen active">
+        <h2>Mark your quiz</h2>
+        <p>Grade your own paper quiz against the answer key, then enter your results here.</p>
+
+        <label class="field-label" for="week-input">Week ending</label>
+        <input type="date" id="week-input" class="date-input">
+
         <p>Who's playing?</p>
         <div id="player-buttons" class="player-grid"></div>
-        <p id="name-error" class="error"></p>
+        <p id="setup-error" class="error"></p>
       </div>
 
-      <div id="screen-quiz" class="screen">
-        <h2 id="quiz-title-2"></h2>
-        <p class="playing-as">Playing as <strong id="current-player"></strong></p>
-        <form id="quiz-form"></form>
-        <button id="submit-quiz" class="primary-btn">Submit Answers</button>
-        <p id="quiz-error" class="error"></p>
+      <div id="screen-mark" class="screen">
+        <h2>Mark each question</h2>
+        <p class="playing-as">
+          <strong id="current-player"></strong> &middot; week ending <strong id="current-week"></strong>
+        </p>
+        <p class="muted">Tap right or wrong for each question, based on the printed answer key.</p>
+        <div id="mark-grid" class="mark-grid"></div>
+        <button id="submit-marks" class="primary-btn">Submit Results</button>
+        <button id="back-to-setup" class="secondary-btn">Back</button>
+        <p id="mark-error" class="error"></p>
       </div>
 
       <div id="screen-results" class="screen">
         <h2>Your Result</h2>
         <p id="your-score" class="score-banner"></p>
-        <ul id="answer-breakdown" class="breakdown"></ul>
 
         <h3>This Week's Ratings</h3>
         <p id="weekly-status" class="muted"></p>
@@ -49,9 +57,9 @@
         <h3>If We Combined Our Knowledge&hellip;</h3>
         <p class="muted">Each question counts as a win for the family team if <em>any</em> family member got it right.</p>
         <p id="family-score" class="score-banner family"></p>
-        <ul id="family-breakdown" class="breakdown"></ul>
+        <p id="family-detail" class="muted"></p>
 
-        <button id="play-again" class="secondary-btn">Switch Player</button>
+        <button id="play-again" class="secondary-btn">Mark Another Result</button>
       </div>
     </section>
 
@@ -60,7 +68,7 @@
       <h2>All-Time Family Leaderboard</h2>
       <table id="leaderboard-table" class="results-table">
         <thead>
-          <tr><th>Family Member</th><th>Quizzes Played</th><th>Total Points</th><th>Average %</th></tr>
+          <tr><th>Family Member</th><th>Weeks Played</th><th>Total Points</th><th>Average %</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -68,6 +76,6 @@
     </section>
   </div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
 </body>
 </html>

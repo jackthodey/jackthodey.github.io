@@ -2,8 +2,11 @@
   "use strict";
 
   const state = {
-    quiz: null,
+    questionCount: 25,
+    players: [],
     player: null,
+    weekId: null,
+    marks: [], // array of true/false/null, one per question
   };
 
   const els = {
@@ -11,26 +14,26 @@
     tabPlay: document.getElementById("tab-play"),
     tabLeaderboard: document.getElementById("tab-leaderboard"),
 
-    screenName: document.getElementById("screen-name"),
-    screenQuiz: document.getElementById("screen-quiz"),
+    screenSetup: document.getElementById("screen-setup"),
+    screenMark: document.getElementById("screen-mark"),
     screenResults: document.getElementById("screen-results"),
 
-    quizTitle: document.getElementById("quiz-title"),
-    quizTitle2: document.getElementById("quiz-title-2"),
+    weekInput: document.getElementById("week-input"),
     playerButtons: document.getElementById("player-buttons"),
-    nameError: document.getElementById("name-error"),
+    setupError: document.getElementById("setup-error"),
 
     currentPlayer: document.getElementById("current-player"),
-    quizForm: document.getElementById("quiz-form"),
-    submitBtn: document.getElementById("submit-quiz"),
-    quizError: document.getElementById("quiz-error"),
+    currentWeek: document.getElementById("current-week"),
+    markGrid: document.getElementById("mark-grid"),
+    submitMarks: document.getElementById("submit-marks"),
+    backToSetup: document.getElementById("back-to-setup"),
+    markError: document.getElementById("mark-error"),
 
     yourScore: document.getElementById("your-score"),
-    answerBreakdown: document.getElementById("answer-breakdown"),
     weeklyStatus: document.getElementById("weekly-status"),
     weeklyTable: document.querySelector("#weekly-table tbody"),
     familyScore: document.getElementById("family-score"),
-    familyBreakdown: document.getElementById("family-breakdown"),
+    familyDetail: document.getElementById("family-detail"),
     playAgain: document.getElementById("play-again"),
 
     leaderboardTable: document.querySelector("#leaderboard-table tbody"),
@@ -38,7 +41,7 @@
   };
 
   function showScreen(id) {
-    [els.screenName, els.screenQuiz, els.screenResults].forEach((s) => s.classList.remove("active"));
+    [els.screenSetup, els.screenMark, els.screenResults].forEach((s) => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
   }
 
@@ -51,27 +54,30 @@
 
   els.tabBtns.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
-  // ---------------------------------------------------------------- loading
-  async function loadQuiz() {
+  function mostRecentSaturday() {
+    const d = new Date();
+    const day = d.getDay(); // 0 = Sunday ... 6 = Saturday
+    const diff = (day + 1) % 7; // days since last Saturday
+    d.setDate(d.getDate() - diff);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // ---------------------------------------------------------------- setup
+  async function loadConfig() {
     try {
-      const res = await fetch("/api/quiz/current");
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        els.quizTitle.textContent = err.error || "No quiz available yet. Check back soon!";
-        return;
-      }
-      state.quiz = await res.json();
-      els.quizTitle.textContent = state.quiz.title;
-      els.quizTitle2.textContent = state.quiz.title;
+      const res = await fetch("/api/config");
+      const data = await res.json();
+      state.questionCount = data.question_count;
+      state.players = data.players;
       renderPlayerButtons();
     } catch (e) {
-      els.quizTitle.textContent = "Couldn't load this week's quiz.";
+      els.setupError.textContent = "Couldn't load the quiz settings.";
     }
   }
 
   function renderPlayerButtons() {
     els.playerButtons.innerHTML = "";
-    state.quiz.players.forEach((name) => {
+    state.players.forEach((name) => {
       const btn = document.createElement("button");
       btn.className = "player-btn";
       btn.textContent = name;
@@ -81,118 +87,102 @@
   }
 
   function selectPlayer(name) {
+    const week = els.weekInput.value;
+    if (!week) {
+      els.setupError.textContent = "Please choose the week-ending date first.";
+      return;
+    }
     state.player = name;
-    els.nameError.textContent = "";
+    state.weekId = week;
+    state.marks = new Array(state.questionCount).fill(null);
+    els.setupError.textContent = "";
     els.currentPlayer.textContent = name;
-    renderQuizForm();
-    showScreen("screen-quiz");
+    els.currentWeek.textContent = week;
+    renderMarkGrid();
+    showScreen("screen-mark");
   }
 
-  // ------------------------------------------------------------- quiz form
-  function renderQuizForm() {
-    els.quizForm.innerHTML = "";
-    state.quiz.questions.forEach((q, idx) => {
-      const card = document.createElement("div");
-      card.className = "question-card";
+  els.weekInput.value = mostRecentSaturday();
 
-      const text = document.createElement("div");
-      text.className = "q-text";
-      text.textContent = `${idx + 1}. ${q.text}`;
-      card.appendChild(text);
+  // ------------------------------------------------------------- mark grid
+  function renderMarkGrid() {
+    els.markGrid.innerHTML = "";
+    for (let i = 0; i < state.questionCount; i++) {
+      const row = document.createElement("div");
+      row.className = "mark-row";
 
-      if (q.type === "text") {
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "text-answer";
-        input.name = `q-${q.id}`;
-        input.dataset.qid = q.id;
-        input.placeholder = "Type your answer";
-        card.appendChild(input);
-      } else {
-        (q.options || []).forEach((opt) => {
-          const label = document.createElement("label");
-          label.className = "option-row";
+      const label = document.createElement("span");
+      label.className = "mark-label";
+      label.textContent = `Q${i + 1}`;
+      row.appendChild(label);
 
-          const input = document.createElement("input");
-          input.type = "radio";
-          input.name = `q-${q.id}`;
-          input.value = opt;
-          input.dataset.qid = q.id;
-          input.addEventListener("change", () => {
-            card.querySelectorAll(".option-row").forEach((r) => r.classList.remove("selected"));
-            label.classList.add("selected");
-          });
+      const right = document.createElement("button");
+      right.className = "mark-btn mark-right";
+      right.textContent = "Right";
+      right.addEventListener("click", () => setMark(i, true, row));
 
-          label.appendChild(input);
-          label.appendChild(document.createTextNode(opt));
-          card.appendChild(label);
-        });
-      }
+      const wrong = document.createElement("button");
+      wrong.className = "mark-btn mark-wrong";
+      wrong.textContent = "Wrong";
+      wrong.addEventListener("click", () => setMark(i, false, row));
 
-      els.quizForm.appendChild(card);
-    });
+      row.appendChild(right);
+      row.appendChild(wrong);
+      els.markGrid.appendChild(row);
+    }
   }
 
-  function collectAnswers() {
-    const answers = {};
-    state.quiz.questions.forEach((q) => {
-      const field = els.quizForm.querySelector(`[name="q-${q.id}"]${q.type === "text" ? "" : ":checked"}`);
-      answers[q.id] = field ? field.value.trim() : "";
-    });
-    return answers;
+  function setMark(index, value, row) {
+    state.marks[index] = value;
+    row.querySelector(".mark-right").classList.toggle("selected", value === true);
+    row.querySelector(".mark-wrong").classList.toggle("selected", value === false);
   }
 
-  els.submitBtn.addEventListener("click", async () => {
-    els.quizError.textContent = "";
-    const answers = collectAnswers();
-    const unanswered = state.quiz.questions.filter((q) => !answers[q.id]);
-    if (unanswered.length) {
-      els.quizError.textContent = `Please answer all questions (${unanswered.length} left).`;
+  els.backToSetup.addEventListener("click", () => {
+    state.player = null;
+    showScreen("screen-setup");
+  });
+
+  els.submitMarks.addEventListener("click", async () => {
+    els.markError.textContent = "";
+    const unmarked = state.marks.filter((m) => m === null).length;
+    if (unmarked) {
+      els.markError.textContent = `Please mark every question (${unmarked} left).`;
       return;
     }
 
-    els.submitBtn.disabled = true;
-    els.submitBtn.textContent = "Grading…";
+    els.submitMarks.disabled = true;
+    els.submitMarks.textContent = "Saving…";
     try {
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: state.player, quiz_id: state.quiz.id, answers }),
+        body: JSON.stringify({ name: state.player, week_id: state.weekId, results: state.marks }),
       });
       const data = await res.json();
       if (!res.ok) {
-        els.quizError.textContent = data.error || "Something went wrong submitting your answers.";
+        els.markError.textContent = data.error || "Something went wrong saving your results.";
         return;
       }
       renderYourResult(data);
-      await renderWeeklyResults(state.quiz.id);
+      await renderWeeklyResults(state.weekId);
       showScreen("screen-results");
     } catch (e) {
-      els.quizError.textContent = "Couldn't reach the server. Try again.";
+      els.markError.textContent = "Couldn't reach the server. Try again.";
     } finally {
-      els.submitBtn.disabled = false;
-      els.submitBtn.textContent = "Submit Answers";
+      els.submitMarks.disabled = false;
+      els.submitMarks.textContent = "Submit Results";
     }
   });
 
   // ---------------------------------------------------------------- results
   function renderYourResult(data) {
     els.yourScore.textContent = `${data.name} scored ${data.score} / ${data.total}`;
-    els.answerBreakdown.innerHTML = "";
-    data.breakdown.forEach((b, idx) => {
-      const li = document.createElement("li");
-      li.className = b.correct ? "correct" : "incorrect";
-      const meta = b.correct
-        ? `Your answer: ${b.your_answer || "(blank)"}`
-        : `Your answer: ${b.your_answer || "(blank)"} — correct answer: ${b.correct_answer}`;
-      li.innerHTML = `${idx + 1}. ${b.text}<span class="meta">${meta}</span>`;
-      els.answerBreakdown.appendChild(li);
-    });
   }
 
-  async function renderWeeklyResults(quizId) {
+  async function renderWeeklyResults(weekId) {
     try {
-      const res = await fetch(`/api/results/${encodeURIComponent(quizId)}`);
+      const res = await fetch(`/api/results/${encodeURIComponent(weekId)}`);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -203,24 +193,18 @@
         els.weeklyTable.appendChild(tr);
       });
 
-      els.weeklyStatus.textContent = `${data.submitted_count} of ${data.player_count} family members have played this week.`;
+      els.weeklyStatus.textContent = `${data.submitted_count} of ${data.player_count} family members have entered results for this week.`;
 
       if (data.family) {
         els.familyScore.textContent = `Family combined score: ${data.family.score} / ${data.family.total}`;
-        els.familyBreakdown.innerHTML = "";
-        data.family.breakdown.forEach((b, idx) => {
-          const li = document.createElement("li");
-          li.className = b.correct ? "correct" : "incorrect";
-          const who = b.solved_by.length ? `Solved by: ${b.solved_by.join(", ")}` : "Nobody got this one yet";
-          li.innerHTML = `${idx + 1}. ${b.text}<span class="meta">${who} — correct answer: ${b.correct_answer}</span>`;
-          els.familyBreakdown.appendChild(li);
-        });
+        const solvedCount = data.family.breakdown.filter((b) => b.correct).length;
+        els.familyDetail.textContent = `As a team you'd have nailed ${solvedCount} of ${data.family.total} questions between you.`;
         if (data.submitted_count < data.player_count) {
-          els.familyScore.textContent += " (so far — more family members still to play)";
+          els.familyScore.textContent += " (so far — more family members still to enter results)";
         }
       } else {
-        els.familyScore.textContent = "Waiting for family members to play…";
-        els.familyBreakdown.innerHTML = "";
+        els.familyScore.textContent = "Waiting for family members to enter their results…";
+        els.familyDetail.textContent = "";
       }
     } catch (e) {
       els.weeklyStatus.textContent = "Couldn't load this week's results.";
@@ -229,8 +213,7 @@
 
   els.playAgain.addEventListener("click", () => {
     state.player = null;
-    els.nameError.textContent = "";
-    showScreen("screen-name");
+    showScreen("screen-setup");
   });
 
   // ------------------------------------------------------------ leaderboard
@@ -240,13 +223,13 @@
       const data = await res.json();
       els.leaderboardTable.innerHTML = "";
       if (!data.leaderboard.length) {
-        els.leaderboardEmpty.textContent = "No quizzes played yet — be the first!";
+        els.leaderboardEmpty.textContent = "No results entered yet — be the first!";
         return;
       }
       els.leaderboardEmpty.textContent = "";
       data.leaderboard.forEach((row) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.name}</td><td>${row.quizzes_played}</td><td>${row.total_score} / ${row.total_possible}</td><td>${row.average_pct}%</td>`;
+        tr.innerHTML = `<td>${row.name}</td><td>${row.weeks_played}</td><td>${row.total_score} / ${row.total_possible}</td><td>${row.average_pct}%</td>`;
         els.leaderboardTable.appendChild(tr);
       });
     } catch (e) {
@@ -254,6 +237,6 @@
     }
   }
 
-  loadQuiz();
-  showScreen("screen-name");
+  loadConfig();
+  showScreen("screen-setup");
 })();
