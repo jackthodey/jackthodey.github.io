@@ -1,0 +1,40 @@
+{
+  "id": "2026-06-07",
+  "title": "Sample Family Quiz - 7 June 2026",
+  "questions": [
+    {
+      "id": 1,
+      "text": "What is the capital of Australia?",
+      "type": "mcq",
+      "options": ["Sydney", "Melbourne", "Canberra", "Perth"],
+      "answer": "Canberra"
+    },
+    {
+      "id": 2,
+      "text": "Which planet is known as the Red Planet?",
+      "type": "mcq",
+      "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+      "answer": "Mars"
+    },
+    {
+      "id": 3,
+      "text": "In what year did the Berlin Wall fall?",
+      "type": "mcq",
+      "options": ["1987", "1989", "1991", "1993"],
+      "answer": "1989"
+    },
+    {
+      "id": 4,
+      "text": "Name the longest river in the world.",
+      "type": "text",
+      "answer": "Nile"
+    },
+    {
+      "id": 5,
+      "text": "How many strings does a standard guitar have?",
+      "type": "mcq",
+      "options": ["4", "5", "6", "7"],
+      "answer": "6"
+    }
+  ]
+}
